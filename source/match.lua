@@ -42,6 +42,20 @@ local DASH_SPEED_MULTIPLIER = 3
 local DASH_SECONDS = 0.15
 local DASH_COOLDOWN_SECONDS = 0.6
 
+-- explicit draw order, so layering does not depend on the order sprites happen
+-- to be added. These reproduce the order the game already produced: the pitch
+-- overlay is drawn over the opponent (whose feet sit under the field's top
+-- edge), and the balls, player and HUD are drawn over the pitch.
+local Z_BACKGROUND = 1
+local Z_OPPONENT = 2
+local Z_PITCH = 3
+local Z_HEALTH = 4
+local Z_BALLS = 5
+local Z_PLAYER = 6
+local Z_HUD = 7
+local Z_COUNTDOWN = 8
+local Z_CHARGE = 9
+
 local match_in_progress = false
 local current_tournament = nil
 local opponent = nil
@@ -212,6 +226,10 @@ function reset_ball_idle_timers()
 	end
 end
 
+-- one image per countdown word, built the first time that word is shown and
+-- reused after that, so the end-of-round 'STOP!' does not rebuild its image
+local countdown_images = {}
+
 function countdown(number)
 	if type(number) == 'number' then
 		play_sound('countdown_tick')
@@ -221,21 +239,28 @@ function countdown(number)
 
 	if countdown_sprite == nil then
 		countdown_sprite = gfx.sprite.new()
+		countdown_sprite:setZIndex(Z_COUNTDOWN)
 	end
 	
 	countdown_sprite:remove()
 
 	if number ~= nil then
-		local background_image = gfx.image.new('assets/backgrounds/blank')
-		gfx.pushContext(background_image)
+		local background_image = countdown_images[number]
+		if background_image == nil then
+			background_image = gfx.image.new('assets/backgrounds/blank')
+			gfx.pushContext(background_image)
 
-		gfx.setFont(large_font)
-		local text_width, text_height = gfx.getTextSize(number)
-		gfx.drawText(
-			number,
-			math.floor( (pd.display.getWidth()  / 2) - (text_width / 2) ),
-			math.floor( (pd.display.getHeight() / 2) - (text_height / 2) ) + 20
-		)
+			gfx.setFont(large_font)
+			local text_width, text_height = gfx.getTextSize(number)
+			gfx.drawText(
+				number,
+				math.floor( (pd.display.getWidth()  / 2) - (text_width / 2) ),
+				math.floor( (pd.display.getHeight() / 2) - (text_height / 2) ) + 20
+			)
+
+			gfx.popContext()
+			countdown_images[number] = background_image
+		end
 
 		countdown_sprite:setImage(background_image)
 		countdown_sprite:moveTo(
@@ -243,7 +268,6 @@ function countdown(number)
 			math.floor( pd.display.getHeight() / 2)
 		)
 		countdown_sprite:add()
-		gfx.popContext()
 	else
 		match_in_progress = true
 	end
@@ -448,11 +472,13 @@ function build_health_bars(player_blocks, opponent_blocks)
 		380,
 		215
 	)
+	player_health_sprites[1]:setZIndex(Z_HEALTH)
 	player_health_sprites[1]:add()
 	local horizontal_position = 376
 	for i=1, player_blocks do
 		horizontal_position -= 13
 		local health_block = gfx.sprite.new(gfx.image.new('assets/health/block'))
+		health_block:setZIndex(Z_HEALTH)
 		health_block:moveTo(
 			horizontal_position,
 			215
@@ -471,10 +497,12 @@ function build_health_bars(player_blocks, opponent_blocks)
 		25,
 		20
 	)
+	opponent_health_sprites[1]:setZIndex(Z_HEALTH)
 	opponent_health_sprites[1]:add()
 	horizontal_position = 42
 	for i=1, opponent_blocks do
 		local health_block = gfx.sprite.new(gfx.image.new('assets/health/block'))
+		health_block:setZIndex(Z_HEALTH)
 		health_block:moveTo(
 			horizontal_position,
 			20
@@ -512,6 +540,7 @@ function place_balls()
 			ball_sprites[i].width - 4, 
 			ball_sprites[i].height - 4
 		)
+		ball_sprites[i]:setZIndex(Z_BALLS)
 		ball_sprites[i]:add()
 		-- a finished timer: the ball is at rest, so ball_move leaves it alone
 		-- and its collisions stay off until it is thrown
@@ -576,6 +605,7 @@ function build_hud()
 		200,
 		21
 	)
+	hud_sprite:setZIndex(Z_HUD)
 	hud_sprite:add()
 end
 
@@ -638,6 +668,7 @@ function update_charge_hud()
 
 	charge_sprite:setImage(meter_image)
 	charge_sprite:moveTo(100, 215)
+	charge_sprite:setZIndex(Z_CHARGE)
 	charge_sprite:add()
 end
 
@@ -1223,6 +1254,7 @@ function play_match(tourament_name, opponent_num, selected_character)
 			math.floor( pd.display.getWidth() / 2),
 			math.floor( pd.display.getHeight() / 2)
 		)
+		background_sprite:setZIndex(Z_BACKGROUND)
 		background_sprite:add()
 
 		opponent_sprite = gfx.sprite.new(CHARACTERS[opponent]['assets']['idle_cpu'])
@@ -1236,6 +1268,7 @@ function play_match(tourament_name, opponent_num, selected_character)
 			opponent_sprite.width - CHARACTERS[opponent]['hitbox'][1], 
 			opponent_sprite.height - CHARACTERS[opponent]['hitbox'][2]
 		)
+		opponent_sprite:setZIndex(Z_OPPONENT)
 		opponent_sprite:add()
 
 		local pitch_image = gfx.image.new('assets/backgrounds/pitch')
@@ -1244,6 +1277,7 @@ function play_match(tourament_name, opponent_num, selected_character)
 			math.floor( pd.display.getWidth() / 2),
 			math.floor( pd.display.getHeight() / 2)
 		)
+		pitch_sprite:setZIndex(Z_PITCH)
 		pitch_sprite:add()
 
 		build_health_bars()
@@ -1260,6 +1294,7 @@ function play_match(tourament_name, opponent_num, selected_character)
 			player_sprite.width - CHARACTERS[player]['hitbox'][1], 
 			player_sprite.height - CHARACTERS[player]['hitbox'][2]
 		)
+		player_sprite:setZIndex(Z_PLAYER)
 		player_sprite:add()
 
 		build_hud()

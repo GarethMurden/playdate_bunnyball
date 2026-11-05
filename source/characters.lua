@@ -32,14 +32,10 @@ CHARACTERS = {
 			run_sequence = {
 				gfx.image.new('assets/animals/bunny_run_01.png'),
 				gfx.image.new('assets/animals/bunny_run_01.png'),
-				gfx.image.new('assets/animals/bunny_run_01.png'),
-				gfx.image.new('assets/animals/bunny_run_02.png'),
 				gfx.image.new('assets/animals/bunny_run_02.png'),
 				gfx.image.new('assets/animals/bunny_run_02.png'),
 				gfx.image.new('assets/animals/bunny_run_03.png'),
 				gfx.image.new('assets/animals/bunny_run_03.png'),
-				gfx.image.new('assets/animals/bunny_run_03.png'),
-				gfx.image.new('assets/animals/bunny_run_04.png'),
 				gfx.image.new('assets/animals/bunny_run_04.png'),
 				gfx.image.new('assets/animals/bunny_run_04.png')
 			}

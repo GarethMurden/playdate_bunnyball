@@ -151,49 +151,80 @@ Still pending from ガレス: music (the `music` fileplayer and `change_music()`
 place, unused, and the Dedediego credit stays on the credits screen) and title/logo art
 (the runtime-drawn title is unchanged).
 
-## Phase 4 — Match structure and rules
+## Phase 4 — Low-risk clean-up
 
-Moved into Phase 2: rounds, the two per-tournament rules and the pause menu are done.
+Done, on branch `phase-4-low-risk`. The remaining work was split into a low-risk half
+(this phase) and a high-risk half (Phase 5). Phase 4 is limited to changes that cannot
+alter gameplay logic, AI behaviour, movement, field maths or scene dispatch.
 
-## Phase 5 — Audio
+- **`select_character` background cached.** The 400x240 image and its `pushContext`/
+  `drawText` calls for the `HP`/`STR`/`SPD` labels now run only when
+  `background_sprite == nil`, the same guard the other scenes use. The highlighted
+  character's name changes with the cursor, so it is drawn into its own small image,
+  cached per name and rebuilt only when the highlighted name changes.
+- **Countdown image cached.** `countdown()` keeps one image per word (`3`, `2`, `1`,
+  `GO!`, `STOP!`) in a table and reuses it, so the 3-second end sequence no longer
+  rebuilds `STOP!` every frame.
+- **Explicit `setZIndex` in `match.lua`.** Named constants `Z_BACKGROUND` (1),
+  `Z_OPPONENT` (2), `Z_PITCH` (3), `Z_HEALTH` (4), `Z_BALLS` (5), `Z_PLAYER` (6),
+  `Z_HUD` (7), `Z_COUNTDOWN` (8), `Z_CHARGE` (9) are applied where each sprite is added.
+  They reproduce the order the game already produced from insertion order, so the
+  visual result is unchanged: the pitch overlay still covers the opponent's feet, and
+  the balls, player, HUD, countdown and power meter still draw over the pitch.
+- **Dead code.** `podium_sprite = nill` in `tournament.lua` is now `nil`. The shadowed
+  `local player_health_sprites` inside `play_match` no longer exists: Phase 2 replaced
+  that block with `build_health_bars()`, so there was nothing left to remove.
+- **Bunny's run animation.** `run_sequence` now repeats each of its 4 frames twice
+  (8 entries) like every other character, instead of three times (12 entries), so Fluff
+  animates at the same rate as the rest of the cast.
+- **Asset hygiene.** `animals/hamster.png` (byte-identical to `hamster_idle.png`) and
+  `animals/fetterCPU_idle.png` (byte-identical to `ferretCPU_idle.png`) are deleted.
+  Nothing in `source/` referenced either name, literal or concatenated. Left in place:
+  `backgrounds/credits_menu.png`, `backgrounds/tournament_end.png`,
+  `arrow_right_long.png` and `tortoise_player_run_01`–`04` (the tortoise frames are
+  needed for Phase 5). The `bugs_hit.png` / `bugsCPU_hit.png` duplication is untouched.
 
-Sound effects are done (Phase 3, `source/sound.lua`, synth only, no audio files).
+Not verified by running the game: the Playdate SDK is x86_64 only and the machine this
+was prepared on is arm64. Every changed call site was read, and all six Lua files pass
+`luac -p` on a copy with `<const>` and `+=`/`-=` mechanically stripped.
 
-Still to do, both waiting on ガレス:
+## Phase 5 — High-risk work
+
+The other half of the remaining work. Each item touches gameplay logic, movement, field
+maths or scene dispatch, so they are kept out of Phase 4.
+
+- **Hoist constants.** Field bounds (`top_of_field`, `right_of_field`, `bottom_of_field`,
+  `left_of_field`), health-bar positions, ball start positions and the 5-second intro
+  delay are hardcoded or file-local; make them named constants.
+- **De-duplicate.** `opponent_act_medium`/`opponent_act_hard`, `player_move`/
+  `opponent_move`, the two health-bar builders and the repeated "measure, centre, draw"
+  pattern in `menu.lua`.
+- **Tortoise player run frames.** `tortoise_player_run_01`–`04` are unused; the
+  `player_run_sequence` entry in `characters.lua` points at the CPU frames and
+  `player_move` has a `TODO` about it. Wire the player-side frames in.
+- **Scene-handler table.** Replace the string-based scene machine
+  (`string.find(scene, 'tournament')` and friends) with a table of scene handlers.
+- **Refresh rate.** Consider `pd.display.setRefreshRate` and offscreen/flush usage;
+  everything currently runs at the default 30 fps with a full `gfx.clear()` each frame.
+- **Globals.** `STATS`, `TOURNAMENT_MATCHES`, `ANIMALS`, `CHARACTERS` and roughly twenty
+  functions are shared across five files, which makes every rename risky.
+- **Lint and CI** so the `hit_palyer` class of typo is caught.
+
+## Still pending from ガレス
 
 - **Music.** No `.pda`/`.wav`/`.mp3` in the repo. `change_music()` is never called and the
   `music` fileplayer is created and never loaded. ガレス will supply the wav files; then
-  load them and wire `change_music()` into the scene changes.
-- The credits screen credits "music from Dedediego" for music that does not exist yet.
-  The credit stays until the music arrives.
-
-## Phase 6 — Presentation and performance
-
-- Title/logo art: the title is drawn as runtime text. ガレス will supply the background
-  and logo art; until then the runtime-drawn title stays as it is. An attract mode and a
-  launch image are still open.
-- `select_character` allocates a fresh 400×240 image and re-runs `pushContext`/`drawText`
-  every frame; `countdown('STOP!')` rebuilds an image every frame during the end sequence.
-  Both are avoidable churn on a 168 MHz CPU.
-- Add `setZIndex` in `match.lua`; the pitch sprite is added after the opponent, so draw
-  order depends on insertion order.
-- Consider `pd.display.setRefreshRate` and offscreen/flush usage; everything currently runs
-  at the default 30 fps with a full `gfx.clear()` each frame.
-
-## Phase 7 — Code health
-
-- Globals: `STATS`, `VERSION`, `TOURNAMENT_MATCHES`, `ANIMALS`, `CHARACTERS` and roughly
-  twenty functions are shared across five files, which makes every rename risky.
-- Replace the string-based scene machine (`string.find(scene, 'tournament')` and friends)
-  with a table of scene handlers.
-- De-duplicate `opponent_act_medium`/`opponent_act_hard`, `player_move`/`opponent_move`, the
-  two health-bar builders and the repeated "measure, centre, draw" pattern in `menu.lua`.
-- Hoist hardcoded field bounds, health-bar positions, ball start positions and the 5-second
-  intro delay into named constants.
-- Remove dead code: the shadowed `player_health_sprites` local, the unused
-  `tortoise_player_run_*` frames, `podium_sprite = nill`.
-- Fix bunny's `run_sequence` repeating each frame 3× while every other character repeats 2×.
-- Add a lint config and CI so the `hit_palyer` class of typo is caught.
+  load them and wire `change_music()` into the scene changes. The credits screen credits
+  "music from Dedediego" for music that does not exist yet; the credit stays until the
+  music arrives.
+- **Title/logo art.** The title is drawn as runtime text. ガレス will supply the
+  background and logo art; until then the runtime-drawn title stays as it is. An attract
+  mode and a launch image are still open.
+- **Scores screen background.** The screen uses `assets/backgrounds/blank` and draws its
+  text straight onto the cleared screen. Drop the art in as
+  `assets/backgrounds/scores.png` and change the one `gfx.image.new` call in `scores()`
+  in `main.lua`.
+- **Pause/forfeit art.** The pause overlay is drawn with the bitmap fonts.
 
 ## Asset notes
 
@@ -207,9 +238,10 @@ Still to do, both waiting on ガレス:
   Sound effects need no assets: they are synthesised in `source/sound.lua`.
 - `bugs_hit.png` is byte-identical to `bugsCPU_hit.png`, and `bugs_idle.png` to
   `bugsCPU_idle.png`.
-- Duplicates/typos in the asset folder: `hamster.png` duplicates `hamster_idle.png`;
-  `fetterCPU_idle.png` is a typo'd duplicate of `ferretCPU_idle.png`.
-- Unused: `backgrounds/credits_menu.png`, `backgrounds/tournament_end.png`,
-  `arrow_right_long.png`, `tortoise_player_run_01–04`.
+- The duplicate/typo'd files `hamster.png` and `fetterCPU_idle.png` were deleted in
+  Phase 4.
+- Unused, kept deliberately: `backgrounds/credits_menu.png`,
+  `backgrounds/tournament_end.png` (may serve pending art) and `arrow_right_long.png`;
+  `tortoise_player_run_01–04` are kept for Phase 5.
 - `resources/` holds the `.ase`/`.aseprite` sources and promo art. They are not part of the
   build and nothing says which is the source of truth.
