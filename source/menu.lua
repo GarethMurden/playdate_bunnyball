@@ -9,6 +9,9 @@ local small_white_font = gfx.font.new('assets/fonts/small_white')
 local small_font = gfx.font.new('assets/fonts/small')
 local tiny_font = gfx.font.new('assets/fonts/tiny')
 
+-- the version comes from source/pdxinfo at build time
+local version = (pd.metadata and pd.metadata.version) or '0.3'
+
 local background_sprite = nil
 local arrow_right = gfx.sprite.new(gfx.image.new('assets/arrow_right'))
 local arrow_down = gfx.sprite.new(gfx.image.new('assets/arrow_down'))
@@ -154,7 +157,7 @@ function main_menu()
 		)
 
 		gfx.setFont(small_white_font)
-		local text = '2023                    PangolinPaw                    v' .. VERSION
+		local text = '2023                    PangolinPaw                    v' .. version
 		local text_width, _ = gfx.getTextSize(text)
 		gfx.drawText(
 			text,
@@ -405,6 +408,24 @@ function select_character(tournament_name, unlocked_characters)
 		end
 
 	elseif pd.buttonJustPressed(pd.kButtonA) then
+		-- locked characters cannot be confirmed
+		if in_table(highlighted_character_name, unlocked_characters) then
+			background_sprite:remove()
+			background_sprite = nil
+			arrow_down:remove()
+			character_sprite:remove()
+			stat_hp_sprite:remove()
+			stat_spd_sprite:remove()
+			stat_str_sprite:remove()
+			for i=1, #animal_icon_sprites do
+				animal_icon_sprites[i]:remove()
+			end
+			selected_character = options[highlighted_2d_option[1]][highlighted_2d_option[2]]['name']
+			next_scene = tournament_name
+		end
+
+	elseif pd.buttonJustPressed(pd.kButtonB) then
+		-- back out to tournament select
 		background_sprite:remove()
 		background_sprite = nil
 		arrow_down:remove()
@@ -415,8 +436,7 @@ function select_character(tournament_name, unlocked_characters)
 		for i=1, #animal_icon_sprites do
 			animal_icon_sprites[i]:remove()
 		end
-		selected_character = options[highlighted_2d_option[1]][highlighted_2d_option[2]]['name']
-		next_scene = tournament_name
+		next_scene = 'tournament_selection'
 	end
 
 	return next_scene, selected_character

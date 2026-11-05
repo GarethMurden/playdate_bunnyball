@@ -58,7 +58,7 @@ CHARACTERS = {
 			icon = gfx.image.new('assets/animals/hamster_icon'),
 			idle_cpu = gfx.image.new('assets/animals/hamsterCPU_idle'),
 			idle_player = gfx.image.new('assets/animals/hamster_idle'),
-			hit_palyer = gfx.image.new('assets/animals/hamster_hit'),
+			hit_player = gfx.image.new('assets/animals/hamster_hit'),
 			hit_cpu = gfx.image.new('assets/animals/hamsterCPU_hit'),
 			run_sequence = {
 				gfx.image.new('assets/animals/hamster_run_01.png'),
@@ -85,7 +85,7 @@ CHARACTERS = {
 			icon = gfx.image.new('assets/animals/bird_icon'),
 			idle_cpu = gfx.image.new('assets/animals/birdCPU_idle'),
 			idle_player = gfx.image.new('assets/animals/bird_idle'),
-			hit_palyer = gfx.image.new('assets/animals/bird_hit'),
+			hit_player = gfx.image.new('assets/animals/bird_hit'),
 			hit_cpu = gfx.image.new('assets/animals/birdCPU_hit'),
 			run_sequence = {
 				gfx.image.new('assets/animals/bird_run_01.png'),
@@ -112,7 +112,7 @@ CHARACTERS = {
 			icon = gfx.image.new('assets/animals/rat_icon'),
 			idle_cpu = gfx.image.new('assets/animals/ratCPU_idle'),
 			idle_player = gfx.image.new('assets/animals/rat_idle'),
-			hit_palyer = gfx.image.new('assets/animals/rat_hit'),
+			hit_player = gfx.image.new('assets/animals/rat_hit'),
 			hit_cpu = gfx.image.new('assets/animals/ratCPU_hit'),
 			run_sequence = {
 				gfx.image.new('assets/animals/rat_run_01.png'),
@@ -139,7 +139,7 @@ CHARACTERS = {
 			icon = gfx.image.new('assets/animals/cat_icon'),
 			idle_cpu = gfx.image.new('assets/animals/catCPU_idle'),
 			idle_player = gfx.image.new('assets/animals/cat_idle'),
-			hit_palyer = gfx.image.new('assets/animals/cat_hit'),
+			hit_player = gfx.image.new('assets/animals/cat_hit'),
 			hit_cpu = gfx.image.new('assets/animals/catCPU_hit'),
 			run_sequence = {
 				gfx.image.new('assets/animals/cat_run_01.png'),
@@ -166,7 +166,7 @@ CHARACTERS = {
 			icon = gfx.image.new('assets/animals/ferret_icon'),
 			idle_cpu = gfx.image.new('assets/animals/ferretCPU_idle'),
 			idle_player = gfx.image.new('assets/animals/ferret_idle'),
-			hit_palyer = gfx.image.new('assets/animals/ferret_hit'),
+			hit_player = gfx.image.new('assets/animals/ferret_hit'),
 			hit_cpu = gfx.image.new('assets/animals/ferretCPU_hit'),
 			run_sequence = {
 				gfx.image.new('assets/animals/ferret_run_01.png'),
@@ -193,7 +193,7 @@ CHARACTERS = {
 			icon = gfx.image.new('assets/animals/snake_icon'),
 			idle_cpu = gfx.image.new('assets/animals/snakeCPU_idle'),
 			idle_player = gfx.image.new('assets/animals/snake_idle'),
-			hit_palyer = gfx.image.new('assets/animals/snake_hit'),
+			hit_player = gfx.image.new('assets/animals/snake_hit'),
 			hit_cpu = gfx.image.new('assets/animals/snakeCPU_hit'),
 			run_sequence = {
 				gfx.image.new('assets/animals/snake_run_01.png'),
@@ -220,7 +220,7 @@ CHARACTERS = {
 			icon = gfx.image.new('assets/animals/bugs_icon'),
 			idle_cpu = gfx.image.new('assets/animals/bugsCPU_idle'),
 			idle_player = gfx.image.new('assets/animals/bugs_idle'),
-			hit_palyer = gfx.image.new('assets/animals/bugs_hit'),
+			hit_player = gfx.image.new('assets/animals/bugs_hit'),
 			hit_cpu = gfx.image.new('assets/animals/bugsCPU_hit'),
 			run_sequence = {
 				gfx.image.new('assets/animals/bugs_run_01.png'),
@@ -247,7 +247,7 @@ CHARACTERS = {
 			icon = gfx.image.new('assets/animals/tortoise_icon'),
 			idle_cpu = gfx.image.new('assets/animals/tortoiseCPU_idle'),
 			idle_player = gfx.image.new('assets/animals/tortoise_idle'),
-			hit_palyer = gfx.image.new('assets/animals/tortoise_hit'),
+			hit_player = gfx.image.new('assets/animals/tortoise_hit'),
 			hit_cpu = gfx.image.new('assets/animals/tortoiseCPU_hit'),
 			run_sequence = {
 				gfx.image.new('assets/animals/tortoise_run_01.png'),

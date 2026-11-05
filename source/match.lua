@@ -467,18 +467,29 @@ function opponent_act_hard()
 		else
 			balls_available = balls_on_right
 		end
-		local nearest_ball = balls_available[1]
-		local nearest_ball_distance = 800
-		for i=1, #balls_available do
-			local ball_distance = distance(ball_sprites[balls_available[i]].x, opponent_sprite.x)
-			if ball_distance < nearest_ball_distance then
-				nearest_ball_distance = ball_distance
-				nearest_ball = balls_available[i]
+		if #balls_available > 0 then
+			local nearest_ball = balls_available[1]
+			local nearest_ball_distance = 800
+			for i=1, #balls_available do
+				local ball_distance = distance(ball_sprites[balls_available[i]].x, opponent_sprite.x)
+				if ball_distance < nearest_ball_distance then
+					nearest_ball_distance = ball_distance
+					nearest_ball = balls_available[i]
+				end
 			end
+			opponent_destination = ball_sprites[nearest_ball].x
+			opponent_move(opponent_destination)
+			opponent_pickup()
+		else
+			-- no ball to chase, so wander like the other difficulties do
+			if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
+				opponent_destination = math.random(right_of_field)
+				if opponent_destination < left_of_field then
+					opponent_destination = left_of_field
+				end
+			end
+			opponent_move(opponent_destination)
 		end
-		opponent_destination = ball_sprites[nearest_ball].x
-		opponent_move(opponent_destination)
-		opponent_pickup()		
 	end
 end
 

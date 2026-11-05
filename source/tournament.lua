@@ -250,7 +250,6 @@ function tournament_end(tournament_name, selected_character, tournament_unlock, 
 		player_sprite:add()
 
 		if tournament_unlock or character_unlock then
-			print('show notification')
 			local notification_image = gfx.image.new('assets/tournament_end/unlock_notification')
 			gfx.pushContext(notification_image)
 			gfx.setFont(small_font)
@@ -260,7 +259,6 @@ function tournament_end(tournament_name, selected_character, tournament_unlock, 
 			else
 				text = 'ANIMAL UNLOCKED'
 			end
-			print(text)
 			local text_width, text_height = gfx.getTextSize(text)
 			gfx.drawText(
 				text,

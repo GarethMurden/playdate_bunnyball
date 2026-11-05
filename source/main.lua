@@ -9,7 +9,6 @@ import 'match.lua'
 local pd <const> = playdate
 local gfx <const> = pd.graphics
 
-VERSION = '0.3'
 STATS = {
 	throws = 0,
 	hits = 0,
@@ -61,21 +60,52 @@ local tournament_name = nil
 local selected_character = 'bunny'
 local opponent_no = 1
 
+local clear_save_pending = false
+local clear_save_prompt_ready = false
+
 local menu = pd.getSystemMenu()
 menu:addMenuItem(
 	'clear save', 
 	function()
-		print('progress reset')
-		progress = {
-			tournament = 1,
-			characters = {
-				'bunny',
-			},
-			scores = {}
-		}
-		pd.datastore.write(progress, 'data', true)
+		-- destructive: ask for a second press before wiping progress
+		clear_save_pending = true
+		clear_save_prompt_ready = false
 	end
 )
+
+function clear_save()
+	progress = {
+		tournament = 1,
+		characters = {
+			'bunny',
+		},
+		scores = {}
+	}
+	pd.datastore.write(progress, 'data', true)
+end
+
+function draw_clear_save_prompt()
+	gfx.setColor(gfx.kColorBlack)
+	gfx.fillRect(40, 80, 320, 80)
+	gfx.setColor(gfx.kColorWhite)
+
+	local text = 'clear all progress?'
+	local text_width, _ = gfx.getTextSize(text)
+	gfx.drawText(
+		text,
+		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
+		95
+	)
+
+	text = 'A = clear    B = cancel'
+	text_width, _ = gfx.getTextSize(text)
+	gfx.drawText(
+		text,
+		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
+		125
+	)
+	gfx.setColor(gfx.kColorBlack)
+end
 
 function change_music(track, loop)
 	if track ~= current_track then
@@ -132,6 +162,22 @@ end
 function pd.update()
 	gfx.clear()
 
+	if clear_save_pending then
+		-- modal: the game is paused until the player confirms or cancels
+		if not clear_save_prompt_ready then
+			-- ignore the button press that chose the menu item
+			clear_save_prompt_ready = true
+		elseif pd.buttonJustPressed(pd.kButtonA) then
+			clear_save_pending = false
+			clear_save()
+		elseif pd.buttonJustPressed(pd.kButtonB) then
+			clear_save_pending = false
+		end
+		gfx.sprite.update()
+		draw_clear_save_prompt()
+		return
+	end
+
 	if scene == nil then -- initialise
 		scene = 'main_menu'
 		progress = pd.datastore.read('data')
@@ -156,7 +202,17 @@ function pd.update()
 		scene, tournament_name = select_tournament(progress['tournament']) -- from menu.lua
 	
 	elseif scene == 'character_selection' then
-		scene, selected_character = select_character(tournament_name, progress['characters']) -- from menu.lua
+		local next_scene, next_character = select_character(tournament_name, progress['characters']) -- from menu.lua
+		scene = next_scene
+		if next_character ~= nil then
+			-- B backs out without choosing, so keep the previous character
+			selected_character = next_character
+		end
+		if string.find(scene, 'tournament_') and scene ~= 'tournament_selection' then
+			-- a tournament run starts here, so reset its per-run state
+			opponent_no = 1
+			STATS['point_total'] = 0
+		end
 
 	elseif string.find(scene, 'tournament') then
 		set_tournament_timer, tournament_name = tournament_intro(scene, opponent_no) -- from tournament.lua
@@ -179,7 +235,6 @@ function pd.update()
 					opponent_no += 1
 				else
 					scene = 'finished_' .. tournament_name
-					opponent_no = 1
 				end
 			end
 		else
@@ -202,11 +257,28 @@ function pd.update()
 		end
 
 	elseif scene == 'scores' then
-		print(' [ DEBUG ] : show scores')
-		
+		-- score saving is not implemented yet, so there is nothing to list
+		gfx.setFont(gfx.getSystemFont())
+		local text = 'no scores recorded yet'
+		local text_width, _ = gfx.getTextSize(text)
+		gfx.drawText(
+			text,
+			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
+			100
+		)
+		text = 'A or B = back'
+		text_width, _ = gfx.getTextSize(text)
+		gfx.drawText(
+			text,
+			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
+			140
+		)
+		if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
+			scene = 'main_menu'
+		end
+
 	end
 
 	gfx.sprite.update() 
 	pd.timer.updateTimers()	
-	pd.drawFPS(10, 10)
 end
