@@ -9,17 +9,22 @@ import 'match.lua'
 local pd <const> = playdate
 local gfx <const> = pd.graphics
 
+local medium_font = gfx.font.new('assets/fonts/medium')
+local small_font = gfx.font.new('assets/fonts/small')
+
 STATS = {
 	throws = 0,
 	hits = 0,
 	health = 0,
 	points = 0,
-	point_total = 0
+	point_total = 0,
+	hearts_lost = 0,
+	elapsed = 0
 }
 TOURNAMENT_MATCHES = {
 	house = {
-		'bunny',
 		'hamster',
+		'bunny',
 		'bird'
 	},
 	garden = {
@@ -50,7 +55,11 @@ local progress = nil
 		'snake',
 		'bugs',
 		'tortoise'
-	}
+	},
+	scores = {
+		['house|bunny'] = {tournament = 'house', character = 'bunny', points = 87, time = 143, hearts_lost = 2}
+	},
+	run = {tournament = 'house', opponent = 2, character = 'bunny'}
 }--]]
 local new_tournament_unlocked = false
 local new_character_unlocked = false
@@ -59,9 +68,22 @@ local scene = nil
 local tournament_name = nil
 local selected_character = 'bunny'
 local opponent_no = 1
+-- true while a tournament run is under way, so quitting mid-run can save it
+local run_active = false
 
 local clear_save_pending = false
 local clear_save_prompt_ready = false
+
+-- pause overlay
+local paused = false
+local pause_ready = false
+local pause_option = 1
+local pause_options = {'resume', 'forfeit', 'quit'}
+
+-- scores screen
+local scores_background = nil
+local scores_offset = 0
+local SCORES_ROWS = 6
 
 local menu = pd.getSystemMenu()
 menu:addMenuItem(
@@ -70,18 +92,89 @@ menu:addMenuItem(
 		-- destructive: ask for a second press before wiping progress
 		clear_save_pending = true
 		clear_save_prompt_ready = false
+		-- the modal takes over; do not also show the pause overlay afterwards
+		paused = false
 	end
 )
 
-function clear_save()
-	progress = {
+function default_progress()
+	return {
 		tournament = 1,
 		characters = {
 			'bunny',
 		},
 		scores = {}
 	}
-	pd.datastore.write(progress, 'data', true)
+end
+
+-- a missing or corrupt datastore must not error the game
+function load_progress()
+	local ok, saved = pcall(pd.datastore.read, 'data')
+	if not ok or type(saved) ~= 'table' then
+		return default_progress()
+	end
+	if type(saved['tournament']) ~= 'number' then
+		saved['tournament'] = 1
+	end
+	if type(saved['characters']) ~= 'table' then
+		saved['characters'] = {'bunny'}
+	end
+	if type(saved['scores']) ~= 'table' then
+		saved['scores'] = {}
+	end
+	-- a half-written run record is dropped rather than resumed into a bad state
+	local run = saved['run']
+	if type(run) ~= 'table'
+		or type(run['tournament']) ~= 'string'
+		or TOURNAMENT_MATCHES[run['tournament']] == nil
+		or type(run['opponent']) ~= 'number'
+		or run['opponent'] < 1
+		or run['opponent'] > #TOURNAMENT_MATCHES[run['tournament']]
+		or type(run['character']) ~= 'string'
+		or not in_table(run['character'], saved['characters'])
+	then
+		saved['run'] = nil
+	end
+	return saved
+end
+
+function save_progress()
+	if progress == nil then
+		return
+	end
+	pcall(pd.datastore.write, progress, 'data', true)
+end
+
+function clear_save()
+	progress = default_progress()
+	run_active = false
+	save_progress()
+end
+
+-- the in-progress tournament run, so quitting mid-run resumes it
+function save_run()
+	if progress == nil or tournament_name == nil or not run_active then
+		return
+	end
+	progress['run'] = {
+		tournament = (tournament_name:gsub('tournament_', '')),
+		opponent = opponent_no,
+		character = selected_character,
+		-- the run's score so far, so a resumed run keeps its totals
+		point_total = STATS['point_total'],
+		hearts_lost = STATS['hearts_lost'],
+		elapsed = STATS['elapsed']
+	}
+	save_progress()
+end
+
+function clear_run()
+	run_active = false
+	if progress == nil then
+		return
+	end
+	progress['run'] = nil
+	save_progress()
 end
 
 function draw_clear_save_prompt()
@@ -107,6 +200,34 @@ function draw_clear_save_prompt()
 	gfx.setColor(gfx.kColorBlack)
 end
 
+function draw_pause_menu()
+	gfx.setColor(gfx.kColorBlack)
+	gfx.fillRect(100, 60, 200, 120)
+	gfx.setColor(gfx.kColorWhite)
+
+	gfx.setFont(medium_font)
+	local text = 'PAUSED'
+	local text_width, _ = gfx.getTextSize(text)
+	gfx.drawText(
+		text,
+		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
+		72
+	)
+
+	gfx.setFont(small_font)
+	for i=1, #pause_options do
+		text = pause_options[i]
+		text_width, _ = gfx.getTextSize(text)
+		local x = math.floor( (pd.display.getWidth() / 2) - (text_width / 2) )
+		local y = 100 + ((i - 1) * 22)
+		if i == pause_option then
+			gfx.drawText('>', x - 14, y)
+		end
+		gfx.drawText(text, x, y)
+	end
+	gfx.setColor(gfx.kColorBlack)
+end
+
 function change_music(track, loop)
 	if track ~= current_track then
 		music:setVolume(0, 0, 0.5)
@@ -122,20 +243,130 @@ function change_music(track, loop)
 	end
 end
 
+-- best score per tournament/character pair, with the time and hearts lost of
+-- that best run
 function save_score()
-	-- TODO: save score for tournament/character combination
-	--[[if in_table(tournament_name .. '|' .. select_character, progress['scores']) then
-		if STATS['point_total'] > progress['scores']
-
+	if progress == nil or tournament_name == nil then
+		return
 	end
-	table.insert(progress['scores'], {tournament_name, STATS['point_total']})
-	STATS = {
-		throws = 0,
-		hits = 0,
-		health = 0,
-		points = 0,
-		point_total = 0
-	}--]]
+	local location = tournament_name:gsub('tournament_', '')
+	local key = location .. '|' .. selected_character
+	local record = {
+		tournament = location,
+		character = selected_character,
+		points = math.floor(STATS['point_total']),
+		time = math.floor(STATS['elapsed']),
+		hearts_lost = STATS['hearts_lost']
+	}
+	local best = progress['scores'][key]
+	if type(best) ~= 'table' then
+		-- nothing saved yet, or a corrupt entry
+		best = nil
+	end
+	if best == nil or record['points'] > best['points'] then
+		progress['scores'][key] = record
+		save_progress()
+	end
+end
+
+function format_time(seconds)
+	seconds = math.floor(seconds or 0)
+	return string.format('%d:%02d', math.floor(seconds / 60), seconds % 60)
+end
+
+function sorted_scores()
+	local list = {}
+	for _, record in pairs(progress['scores']) do
+		-- skip anything a corrupt save left behind
+		if type(record) == 'table' and type(record['points']) == 'number' then
+			table.insert(list, record)
+		end
+	end
+	table.sort(list, function(a, b)
+		if a['tournament'] ~= b['tournament'] then
+			return a['tournament'] < b['tournament']
+		end
+		return a['character'] < b['character']
+	end)
+	return list
+end
+
+function scores()
+	-- TODO: the scores screen art is not available yet. ガレス will supply a
+	-- background image; drop it in as assets/backgrounds/scores.png and swap
+	-- the line below to load it. Until then the plain blank background is used
+	-- and the text is drawn straight onto the cleared screen.
+	if scores_background == nil then
+		scores_background = gfx.image.new('assets/backgrounds/blank')
+	end
+	scores_background:draw(0, 0)
+
+	local list = sorted_scores()
+
+	gfx.setFont(medium_font)
+	local text = 'SCORES'
+	local text_width, _ = gfx.getTextSize(text)
+	gfx.drawText(
+		text,
+		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
+		12
+	)
+
+	gfx.setFont(small_font)
+	if #list == 0 then
+		text = 'no scores recorded yet'
+		text_width, _ = gfx.getTextSize(text)
+		gfx.drawText(
+			text,
+			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
+			100
+		)
+	else
+		-- column headings
+		gfx.drawText('tournament', 20, 40)
+		gfx.drawText('animal', 120, 40)
+		gfx.drawText('pts', 220, 40)
+		gfx.drawText('time', 270, 40)
+		gfx.drawText('hearts', 330, 40)
+
+		if pd.buttonJustPressed(pd.kButtonDown) then
+			scores_offset += 1
+			if scores_offset > #list - SCORES_ROWS then
+				scores_offset = math.max(#list - SCORES_ROWS, 0)
+			end
+		elseif pd.buttonJustPressed(pd.kButtonUp) then
+			scores_offset -= 1
+			if scores_offset < 0 then
+				scores_offset = 0
+			end
+		end
+
+		for i=1, SCORES_ROWS do
+			local record = list[scores_offset + i]
+			if record ~= nil then
+				local y = 40 + (i * 22)
+				gfx.drawText(record['tournament'], 20, y)
+				gfx.drawText(record['character'], 120, y)
+				gfx.drawText(tostring(record['points']), 220, y)
+				gfx.drawText(format_time(record['time']), 270, y)
+				gfx.drawText(tostring(record['hearts_lost']), 330, y)
+			end
+		end
+	end
+
+	text = 'A or B = back'
+	text_width, _ = gfx.getTextSize(text)
+	gfx.drawText(
+		text,
+		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
+		220
+	)
+
+	if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
+		scores_offset = 0
+		return 'main_menu'
+	end
+	return 'scores'
 end
 
 function start_match(tourament_name, opponent_num)
@@ -144,19 +375,42 @@ function start_match(tourament_name, opponent_num)
 	scene = play_match(tourament_name, opponent_num, selected_character)
 end
 
+function pd.gameWillPause()
+	-- Executed when the system menu opens. pd.update stops being called, so the
+	-- match cannot advance; the pause overlay takes over when the menu closes.
+	if scene ~= nil and string.find(scene, 'match') then
+		paused = true
+		pause_ready = false
+		pause_option = 1
+	end
+end
+
 function pd.gameWillResume()
-	-- Executed when game is un-paused
-	progress = pd.datastore.read('data')
+	-- Executed when the system menu closes. The wall clock keeps running while
+	-- the menu is open, so the match's elapsed time and the unclaimed-ball
+	-- timers skip that gap. The in-memory progress is the source of truth now
+	-- that runs are saved as they happen, so only read the datastore when there
+	-- is nothing in memory to keep.
+	resume_match_clock() -- from match.lua
+	if clear_save_pending then
+		-- the clear-save modal is showing instead of the pause overlay
+		paused = false
+	end
+	if progress == nil then
+		progress = load_progress()
+	end
 end
 
 function pd.gameWillSleep()
 	-- Executed when system runs out of battery
-	pd.datastore.write(progress, 'data', true)
+	save_run()
+	save_progress()
 end
 
 function pd.gameWillTerminate()
 	-- Executed when game is quit
-	pd.datastore.write(progress, 'data', true)
+	save_run()
+	save_progress()
 end
 
 function pd.update()
@@ -178,18 +432,63 @@ function pd.update()
 		return
 	end
 
+	if paused then
+		-- the match is frozen: no scene logic and no timers run while paused
+		if not pause_ready then
+			-- ignore the press that closed the system menu
+			pause_ready = true
+		elseif pd.buttonJustPressed(pd.kButtonDown) then
+			pause_option += 1
+			if pause_option > #pause_options then
+				pause_option = 1
+			end
+		elseif pd.buttonJustPressed(pd.kButtonUp) then
+			pause_option -= 1
+			if pause_option < 1 then
+				pause_option = #pause_options
+			end
+		elseif pd.buttonJustPressed(pd.kButtonA) then
+			local choice = pause_options[pause_option]
+			paused = false
+			if choice == 'resume' then
+				resume_match_clock() -- from match.lua
+			elseif choice == 'forfeit' then
+				if string.find(scene, 'match') then
+					abandon_match() -- from match.lua
+				end
+				clear_run()
+				scene = 'tournament_selection'
+			else
+				-- quit keeps the run saved, so relaunching resumes it
+				save_run()
+				if string.find(scene, 'match') then
+					abandon_match() -- from match.lua
+				end
+				scene = 'main_menu'
+			end
+		elseif pd.buttonJustPressed(pd.kButtonB) then
+			paused = false
+			resume_match_clock() -- from match.lua
+		end
+		gfx.sprite.update()
+		draw_pause_menu()
+		return
+	end
+
 	if scene == nil then -- initialise
 		scene = 'main_menu'
-		progress = pd.datastore.read('data')
-		if progress == nil then
-			progress = {
-				tournament = 1,
-				characters = {
-					'bunny',
-				},
-				scores = {}
-			}
-			pd.datastore.write(progress, 'data', true)
+		progress = load_progress()
+		if progress['run'] ~= nil then
+			-- resume the tournament run that was in progress when the game quit
+			local run = progress['run']
+			tournament_name = 'tournament_' .. run['tournament']
+			opponent_no = run['opponent']
+			selected_character = run['character']
+			STATS['point_total'] = run['point_total'] or 0
+			STATS['hearts_lost'] = run['hearts_lost'] or 0
+			STATS['elapsed'] = run['elapsed'] or 0
+			run_active = true
+			scene = tournament_name
 		end
 
 	elseif scene == 'main_menu' then
@@ -212,6 +511,34 @@ function pd.update()
 			-- a tournament run starts here, so reset its per-run state
 			opponent_no = 1
 			STATS['point_total'] = 0
+			STATS['hearts_lost'] = 0
+			STATS['elapsed'] = 0
+			run_active = true
+			save_run()
+		end
+
+	elseif string.find(scene, 'finished') then
+		if progress['tournament'] == 1 and new_tournament_unlocked ~= true then
+			progress['tournament'] = 2
+			new_tournament_unlocked = true
+			save_progress()
+		elseif progress['tournament'] == 2 and new_tournament_unlocked ~= true then
+			progress['tournament'] = 3
+			new_tournament_unlocked = true
+			save_progress()
+		end
+		-- beating a tournament unlocks that tournament's first opponent
+		local location = tournament_name:gsub('tournament_', '')
+		local unlock = TOURNAMENT_MATCHES[location][1]
+		if not in_table(unlock, progress['characters']) then
+			table.insert(progress['characters'], unlock)
+			new_character_unlocked = true
+			save_progress()
+		end
+		scene = tournament_end(tournament_name, selected_character, new_tournament_unlocked, new_character_unlocked)
+		if scene == 'main_menu' then
+			save_score()
+			clear_run()
 		end
 
 	elseif string.find(scene, 'tournament') then
@@ -233,49 +560,21 @@ function pd.update()
 				clear_tournament_sprites() -- from tournament.lua
 				if opponent_no < 3 then
 					opponent_no += 1
+					save_run()
 				else
 					scene = 'finished_' .. tournament_name
 				end
 			end
 		else
 			scene = match_end(tournament_name, selected_character, 'LOSS') -- from tournament.lua
-		end
-
-	elseif string.find(scene, 'finished') then
-		if progress['tournament'] == 1 and new_tournament_unlocked ~= true then
-			progress['tournament'] = 2
-			new_tournament_unlocked = true
-		elseif progress['tournament'] == 2 and new_tournament_unlocked ~= true then
-			progress['tournament'] = 3
-			new_tournament_unlocked = true
-		end
-		-- TODO: character unlock
-		character_unlock = false
-		scene = tournament_end(tournament_name, selected_character, new_tournament_unlocked, new_character_unlocked)
-		if scene == 'main_menu' then
-			save_score()
+			if scene == 'main_menu' then
+				-- the run is over
+				clear_run()
+			end
 		end
 
 	elseif scene == 'scores' then
-		-- score saving is not implemented yet, so there is nothing to list
-		gfx.setFont(gfx.getSystemFont())
-		local text = 'no scores recorded yet'
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			100
-		)
-		text = 'A or B = back'
-		text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			140
-		)
-		if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
-			scene = 'main_menu'
-		end
+		scene = scores()
 
 	end
 

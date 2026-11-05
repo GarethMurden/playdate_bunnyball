@@ -44,17 +44,61 @@ this was prepared on is arm64. Run `make` on a machine with the SDK to confirm i
   it is nil.
 - Remove debug leftovers: `pd.drawFPS(10, 10)`, the `print` calls, the `VERSION` global.
 
-## Phase 2 — Scoring, saves and progression
+## Phase 2 — Complete the core loop
 
-- Implement `save_score()`: best score per character/tournament pair, persisted.
-- Build the scores screen (art does not exist yet).
-- Measure elapsed match time; score time to defeat, hearts lost and throws.
-- Reset per-run state (`point_total`, `opponent_no`) at tournament start.
-- Save in-progress tournament state, and stop `gameWillResume` from clobbering the
-  in-memory `progress` with a stale datastore read.
-- Make the unlock chain match the data: `TOURNAMENT_MATCHES.house[1]` is `'bunny'`, which is
-  already unlocked, so beating the house tournament currently unlocks nothing new.
-- Add a confirmation to the destructive "clear save" system menu item.
+Done, on branch `phase-2-core-loop`. The rounds, per-tournament rules and pause menu items
+that were listed under Phase 4 were pulled forward into this phase, so Phase 4 is now empty
+apart from what Phase 3 leaves behind.
+
+- **Rounds.** A match is best of three: the first side to win two rounds takes it. Each round
+  is the old single life-bar race to zero. Between rounds health, ball positions and both
+  fighters are reset, and the 3-2-1-GO countdown runs again. The HUD shows `ROUND n` and the
+  round score (`player - opponent`) in the light box at the top centre of the pitch.
+  `ROUNDS_TO_WIN` in `match.lua` is the tunable.
+- **Scoring and persistence.** `save_score()` keeps the best run per tournament/character
+  pair in `progress.scores`, keyed `'<tournament>|<character>'`, storing points, elapsed
+  seconds and hearts lost. `STATS['elapsed']` accumulates play time across the rounds of a
+  match; `STATS['hearts_lost']` counts hits taken. Both reset at tournament start, like
+  `point_total`. `load_progress()` wraps the datastore read in `pcall` and repairs a missing
+  or malformed table instead of erroring.
+- **Scores screen.** Lists every saved score (tournament, animal, points, time, hearts lost),
+  six rows at a time, Up/Down to scroll, A or B back to the main menu.
+  **Pending art:** the scores screen background does not exist yet. ガレス will supply it;
+  drop it in as `assets/backgrounds/scores.png` and change the one `gfx.image.new` call in
+  `scores()` in `main.lua`. Until then the screen uses `assets/backgrounds/blank` and draws
+  its text straight onto the cleared screen.
+- **Character unlocking.** Beating a tournament adds that tournament's first opponent to
+  `progress.characters` and sets `new_character_unlocked`, which `tournament_end()` now
+  reads, so the "ANIMAL UNLOCKED" box fires. `TOURNAMENT_MATCHES.house` is now
+  `{'hamster', 'bunny', 'bird'}` so the first unlock is a character the player does not
+  already have; garden and park already started with an unowned character. The typo'd
+  `character_unlock` global is gone.
+- **Per-tournament rules.** Rule 2 (garden): a ball that has been thrown and then left
+  unclaimed for `BALL_UNCLAIMED_SECONDS` (5) moves to the other side of the field. Rule 3
+  (park): no healing between rounds — the side that won the round keeps the hearts it has
+  left, the side that lost is restored to a full bar (a round ends at zero hearts, so
+  carrying that over would end the next round immediately).
+- **Pause menu.** `gameWillPause` opens an overlay with Resume / Forfeit / Quit; Up/Down
+  moves, A chooses, B resumes. While it is up, `pd.update` returns before any scene logic and
+  before `pd.timer.updateTimers()`, so the match and its timers are frozen. Forfeit tears the
+  match down and returns to tournament select; Quit saves the run and returns to the main
+  menu.
+- **Mid-run save.** `progress.run` holds tournament, opponent number, character and the
+  run's running totals, written at run start and after each win. Relaunching resumes it.
+  `gameWillResume` no longer re-reads the datastore over the in-memory `progress`; it only
+  reads when there is nothing in memory, and it re-bases the match clock so time spent in
+  the system menu is not counted.
+
+Design decisions taken here:
+
+- Round-win condition: first to 2 rounds, so a match is at most 3 rounds. A round is won by
+  emptying the opponent's life bar, exactly as the old single-round match was.
+- `BALL_UNCLAIMED_SECONDS = 5`. The count only starts once a ball has been thrown, so the
+  balls laid out at the start of a round are not swept across the field before play begins.
+- The pause overlay is reached through the system menu (`gameWillPause`), not a button in
+  the match, because B is reserved for Phase 3.
+- `TOURNAMENT_MATCHES.house` keeps bunny as its second opponent rather than dropping it, so
+  the roster and the podium screen are unchanged.
 
 ## Phase 3 — Throw control
 
@@ -66,11 +110,7 @@ this was prepared on is arm64. Run `make` on a machine with the SDK to confirm i
 
 ## Phase 4 — Match structure and rules
 
-- Rounds: a match is currently a single life-bar race to zero. Penguin Wars is round-based;
-  add a best-of with a round counter and a reset between rounds.
-- Per-tournament rules from the design notes: rule 2 (a ball not picked up for x seconds
-  goes to the opponent's side) and rule 3 (no healing between rounds) are unimplemented.
-- Pause menu with forfeit, as the design notes specify.
+Moved into Phase 2: rounds, the two per-tournament rules and the pause menu are done.
 
 ## Phase 5 — Audio
 
@@ -114,7 +154,8 @@ this was prepared on is arm64. Run `make` on a machine with the SDK to confirm i
   backgrounds, three tournament-select backgrounds, menu/character-select/credits/blank
   backgrounds, match-end banner, medal and score box, podium and unlock notification, health
   hearts and blocks, seven stat-bar states, five bitmap fonts, arrows, padlocks, ball.
-- Missing: all audio, title/logo art, pause/scores/forfeit screens.
+- Missing: all audio, title/logo art, the scores screen background (pending from ガレス),
+  and dedicated pause/forfeit art (the pause overlay is drawn with the bitmap fonts).
 - `bugs_hit.png` is byte-identical to `bugsCPU_hit.png`, and `bugs_idle.png` to
   `bugsCPU_idle.png`.
 - Duplicates/typos in the asset folder: `hamster.png` duplicates `hamster_idle.png`;
