@@ -1,5 +1,6 @@
-# Bunnyball
+# Bunnyball — design notes
 
+The original design notes for the game, kept as written.
 
 ## Notes
 
