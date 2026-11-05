@@ -150,6 +150,7 @@ function match_end(tournament_name, player_animal, outcome)
 	end
 
 	if pd.buttonJustPressed(pd.kButtonA) then
+		play_sound('menu_select')
 		if outcome == 'WIN' then
 			return 'tournament_' .. tournament_name
 		else
@@ -282,6 +283,7 @@ function tournament_end(tournament_name, selected_character, tournament_unlock, 
 
 	end
 	if pd.buttonJustPressed(pd.kButtonA) then
+		play_sound('menu_select')
 		clear_tournament_sprites()
 		return 'main_menu'
 	else

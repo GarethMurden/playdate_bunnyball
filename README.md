@@ -14,7 +14,7 @@ AI. Winning a tournament unlocks the next one.
 | Main menu | Up / Down to move, A to select |
 | Tournament select | Left / Right to move, A to select, B to go back |
 | Character select | D-pad to move around the 3×3 grid, A to confirm |
-| Match | Left / Right to move, A to pick up a ball, A again to throw it |
+| Match | Left / Right to move, B to dash, A to pick up a ball, hold A to charge a throw and release to throw, Up / Down while charging to aim short or deep |
 | Pause | Open the system menu to pause; Up / Down to move, A to choose, B to resume |
 | Match end | A to continue |
 | Scores | Up / Down to scroll, A or B to go back |
@@ -70,6 +70,7 @@ source/            Lua source and assets — this is what pdc compiles
   menu.lua         main menu, credits, tournament select, character select
   tournament.lua   tournament intro, match end, tournament end
   match.lua        the match itself: movement, throwing, collisions, health
+  sound.lua        synthesised sound effects (no audio files)
   characters.lua   character stats and sprite sets
   pdxinfo          game metadata read by pdc
   assets/          sprites, backgrounds, fonts

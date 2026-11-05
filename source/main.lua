@@ -2,6 +2,7 @@ import 'CoreLibs/graphics'
 import 'CoreLibs/sprites'
 import 'CoreLibs/timer'
 
+import 'sound.lua'
 import 'menu.lua'
 import 'tournament.lua'
 import 'match.lua'
@@ -334,11 +335,13 @@ function scores()
 			if scores_offset > #list - SCORES_ROWS then
 				scores_offset = math.max(#list - SCORES_ROWS, 0)
 			end
+			play_sound('menu_move')
 		elseif pd.buttonJustPressed(pd.kButtonUp) then
 			scores_offset -= 1
 			if scores_offset < 0 then
 				scores_offset = 0
 			end
+			play_sound('menu_move')
 		end
 
 		for i=1, SCORES_ROWS do
@@ -364,6 +367,7 @@ function scores()
 
 	if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
 		scores_offset = 0
+		play_sound('menu_back')
 		return 'main_menu'
 	end
 	return 'scores'
@@ -423,9 +427,11 @@ function pd.update()
 			clear_save_prompt_ready = true
 		elseif pd.buttonJustPressed(pd.kButtonA) then
 			clear_save_pending = false
+			play_sound('menu_select')
 			clear_save()
 		elseif pd.buttonJustPressed(pd.kButtonB) then
 			clear_save_pending = false
+			play_sound('menu_back')
 		end
 		gfx.sprite.update()
 		draw_clear_save_prompt()
@@ -442,14 +448,17 @@ function pd.update()
 			if pause_option > #pause_options then
 				pause_option = 1
 			end
+			play_sound('menu_move')
 		elseif pd.buttonJustPressed(pd.kButtonUp) then
 			pause_option -= 1
 			if pause_option < 1 then
 				pause_option = #pause_options
 			end
+			play_sound('menu_move')
 		elseif pd.buttonJustPressed(pd.kButtonA) then
 			local choice = pause_options[pause_option]
 			paused = false
+			play_sound('menu_select')
 			if choice == 'resume' then
 				resume_match_clock() -- from match.lua
 			elseif choice == 'forfeit' then
@@ -468,6 +477,7 @@ function pd.update()
 			end
 		elseif pd.buttonJustPressed(pd.kButtonB) then
 			paused = false
+			play_sound('menu_back')
 			resume_match_clock() -- from match.lua
 		end
 		gfx.sprite.update()
@@ -533,6 +543,7 @@ function pd.update()
 		if not in_table(unlock, progress['characters']) then
 			table.insert(progress['characters'], unlock)
 			new_character_unlocked = true
+			play_sound('character_unlock')
 			save_progress()
 		end
 		scene = tournament_end(tournament_name, selected_character, new_tournament_unlocked, new_character_unlocked)

@@ -109,6 +109,7 @@ function credits()
 	background_sprite:add()
 
 	if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
+		play_sound('menu_back')
 		background_sprite:remove()
 		background_sprite = nil
 		return 'main_menu' -- next scene
@@ -203,12 +204,15 @@ function main_menu()
 		if highlighted_option > #options then
 			highlighted_option = 1
 		end
+		play_sound('menu_move')
 	elseif pd.buttonJustPressed(pd.kButtonUp) then
 		highlighted_option -= 1
 		if highlighted_option < 1 then
 			highlighted_option = #options
 		end
+		play_sound('menu_move')
 	elseif pd.buttonJustPressed(pd.kButtonA) then
+		play_sound('menu_select')
 		arrow_right:remove()
 		background_sprite:remove()
 		background_sprite = nil
@@ -388,28 +392,33 @@ function select_character(tournament_name, unlocked_characters)
 		if highlighted_2d_option[1] > 3 then
 			highlighted_2d_option[1] = 1
 		end
+		play_sound('menu_move')
 
 	elseif pd.buttonJustPressed(pd.kButtonUp) then
 		highlighted_2d_option[1] -= 1
 		if highlighted_2d_option[1] < 1 then
 			highlighted_2d_option[1] = 3
 		end
+		play_sound('menu_move')
 
 	elseif pd.buttonJustPressed(pd.kButtonRight) then
 		highlighted_2d_option[2] += 1
 		if highlighted_2d_option[2] > 3 then
 			highlighted_2d_option[2] = 1
 		end
+		play_sound('menu_move')
 
 	elseif pd.buttonJustPressed(pd.kButtonLeft) then
 		highlighted_2d_option[2] -= 1
 		if highlighted_2d_option[2] < 1 then
 			highlighted_2d_option[2] = 3
 		end
+		play_sound('menu_move')
 
 	elseif pd.buttonJustPressed(pd.kButtonA) then
 		-- locked characters cannot be confirmed
 		if in_table(highlighted_character_name, unlocked_characters) then
+			play_sound('menu_select')
 			background_sprite:remove()
 			background_sprite = nil
 			arrow_down:remove()
@@ -426,6 +435,7 @@ function select_character(tournament_name, unlocked_characters)
 
 	elseif pd.buttonJustPressed(pd.kButtonB) then
 		-- back out to tournament select
+		play_sound('menu_back')
 		background_sprite:remove()
 		background_sprite = nil
 		arrow_down:remove()
@@ -546,13 +556,16 @@ function select_tournament(unlocked_tournaments)
 		if highlighted_option > #options then
 			highlighted_option = 1
 		end
+		play_sound('menu_move')
 	elseif pd.buttonJustPressed(pd.kButtonLeft) then
 		highlighted_option -= 1
 		if highlighted_option < 1 then
 			highlighted_option = #options
 		end
+		play_sound('menu_move')
 	elseif pd.buttonJustPressed(pd.kButtonA) then
 		if highlighted_option <= unlocked_tournaments then
+			play_sound('menu_select')
 			arrow_down:remove()
 			background_sprite:remove()
 			background_sprite = nil
@@ -567,6 +580,7 @@ function select_tournament(unlocked_tournaments)
 			next_scene = 'character_selection'
 		end
 	elseif pd.buttonJustPressed(pd.kButtonB) then
+		play_sound('menu_back')
 		arrow_down:remove()
 		background_sprite:remove()
 		background_sprite = nil

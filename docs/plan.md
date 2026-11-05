@@ -100,13 +100,56 @@ Design decisions taken here:
 - `TOURNAMENT_MATCHES.house` keeps bunny as its second opponent rather than dropping it, so
   the roster and the podium screen are unchanged.
 
-## Phase 3 — Throw control
+## Phase 3 — Throw control, dash and sound effects
 
-- **Press-and-hold throw** (replaces the crank item): holding A charges the throw, release
-  throws; charge time maps to throw speed, scaled by the character's `strength` stat.
-  Replaces the fixed `6000 / strength` throw time in `player_throw`.
-- Give the throw an aim dimension so the player can lead a target.
-- Use B in a match (dash, lob or cancel) and in `select_character` (back out).
+Done, on branch `phase-3-throw-and-sound`. Crank input is dropped entirely: no crank
+handling was added anywhere.
+
+- **Press-and-hold throw.** Holding A with a ball charges the throw; releasing A throws.
+  Charge accumulates from 0 to `CHARGE_MAX_SECONDS` (1.0s) and is clamped. The throw time
+  is `(6000 / strength) * (1 + CHARGE_SLOWEST_FACTOR * (1 - charge_ratio))`, where
+  `charge_ratio` is charge / `CHARGE_MAX_SECONDS`. A full charge throws at the old fixed
+  speed; a tap is 1.5x slower (`CHARGE_SLOWEST_FACTOR` 0.5), still enough to cross the
+  field.
+  The AI keeps its fixed `6000 / strength` throw.
+- **Aim.** While charging, Up/Down moves the throw's landing point in 15px steps from the
+  opponent's line (`top_of_field`, 95) up to `AIM_MAX_OFFSET` (30) short of it, i.e. three
+  settings: full field, mid, short. The ball's end y is `top_of_field + aim`.
+- **Power meter and aim on the HUD.** A 170x26 white panel at (100, 215) holding the
+  existing `assets/bar/0`–`bar/6` stat bars as a 7-step power meter, plus three aim
+  notches (filled = selected) and the small font's `AIM` label. No new art.
+- **B = dash.** B while holding Left or Right gives `DASH_SPEED_MULTIPLIER` (3x) speed for
+  `DASH_SECONDS` (0.15s), then a `DASH_COOLDOWN_SECONDS` (0.6s) cooldown. Reuses the
+  existing run frames. B in a match is only the dash; the pause overlay's B-to-resume and
+  the menus' B-to-back are untouched.
+- **Sound effects.** New `source/sound.lua` builds every effect from
+  `playdate.sound.synth` — square, triangle, sawtooth and noise waveforms with short
+  ADSR envelopes. No audio files. Effects: `menu_move`, `menu_select`, `menu_back`,
+  `ball_pickup`, `throw` (pitch scaled by charge), `ball_hit`, `player_hit`,
+  `opponent_hit`, `countdown_tick`, `go`, `round_win`, `round_lose`, `match_win`,
+  `match_lose`, `character_unlock`. `SOUND_VOLUME` (0.4) scales everything and
+  `SOUND_MUTED` silences it, both in `sound.lua`. Notes are played from a pool of 8
+  synths, because a synth holds only one queued note.
+
+Design decisions taken here:
+
+- Charge curve is linear in time, and the throw time is linear in charge. A full charge
+  reproduces the pre-Phase-3 throw exactly, so the feel of a fully charged throw is the
+  old throw.
+- Aim is a landing-point offset rather than a lob height: the ball still travels in a
+  straight line along y, it just stops short. That needed one supporting change — a ball
+  is now "reachable" by a side when it has come to rest anywhere in that side's half
+  (`ball_resting_on_side`), not only when it sits on the line at y 95 or 185. Without it
+  an aimed ball would be unreachable by either side. The AI's ball scans use the same
+  helper, so it chases aimed balls too.
+- The dash is a speed multiplier on the existing movement, not a separate move, so it
+  cannot leave the field bounds or desync the carried ball.
+- Sound is wired in at the existing call sites only; no game logic was changed to make
+  room for it. `play_sound` is a no-op when muted, so call sites need no guards.
+
+Still pending from ガレス: music (the `music` fileplayer and `change_music()` are left in
+place, unused, and the Dedediego credit stays on the credits screen) and title/logo art
+(the runtime-drawn title is unchanged).
 
 ## Phase 4 — Match structure and rules
 
@@ -114,16 +157,21 @@ Moved into Phase 2: rounds, the two per-tournament rules and the pause menu are 
 
 ## Phase 5 — Audio
 
-- No audio exists at all: no `.pda`/`.wav`/`.mp3` in the repo. `change_music()` is never
-  called and the `music` fileplayer is created and never loaded.
-- Add music and sound effects (`playdate.sound.synth` for effects), and wire
-  `change_music()` into the scene changes.
+Sound effects are done (Phase 3, `source/sound.lua`, synth only, no audio files).
+
+Still to do, both waiting on ガレス:
+
+- **Music.** No `.pda`/`.wav`/`.mp3` in the repo. `change_music()` is never called and the
+  `music` fileplayer is created and never loaded. ガレス will supply the wav files; then
+  load them and wire `change_music()` into the scene changes.
 - The credits screen credits "music from Dedediego" for music that does not exist yet.
+  The credit stays until the music arrives.
 
 ## Phase 6 — Presentation and performance
 
-- Title/logo art: the title is drawn as runtime text. Add a logo, an attract mode and a
-  launch image.
+- Title/logo art: the title is drawn as runtime text. ガレス will supply the background
+  and logo art; until then the runtime-drawn title stays as it is. An attract mode and a
+  launch image are still open.
 - `select_character` allocates a fresh 400×240 image and re-runs `pushContext`/`drawText`
   every frame; `countdown('STOP!')` rebuilds an image every frame during the end sequence.
   Both are avoidable churn on a 168 MHz CPU.
@@ -154,8 +202,9 @@ Moved into Phase 2: rounds, the two per-tournament rules and the pause menu are 
   backgrounds, three tournament-select backgrounds, menu/character-select/credits/blank
   backgrounds, match-end banner, medal and score box, podium and unlock notification, health
   hearts and blocks, seven stat-bar states, five bitmap fonts, arrows, padlocks, ball.
-- Missing: all audio, title/logo art, the scores screen background (pending from ガレス),
+- Missing: music, title/logo art, the scores screen background (all pending from ガレス),
   and dedicated pause/forfeit art (the pause overlay is drawn with the bitmap fonts).
+  Sound effects need no assets: they are synthesised in `source/sound.lua`.
 - `bugs_hit.png` is byte-identical to `bugsCPU_hit.png`, and `bugs_idle.png` to
   `bugsCPU_idle.png`.
 - Duplicates/typos in the asset folder: `hamster.png` duplicates `hamster_idle.png`;
