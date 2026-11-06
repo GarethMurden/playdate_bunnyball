@@ -20,6 +20,22 @@ local power_bars = {
 	gfx.image.new('assets/bar/6')
 }
 
+-- Shared pitch layout and scene timing. Values preserve the existing layout.
+local TOP_OF_FIELD = 95
+local RIGHT_OF_FIELD = 365
+local BOTTOM_OF_FIELD = 185
+local LEFT_OF_FIELD = 35
+local FIELD_MIDPOINT = 200
+local PLAYER_HEALTH_HEART_POSITION = {380, 215}
+local OPPONENT_HEALTH_HEART_POSITION = {25, 20}
+local HEALTH_BLOCK_SPACING = 13
+local BALL_START_POSITIONS = {
+	{45, BOTTOM_OF_FIELD}, {65, BOTTOM_OF_FIELD}, {85, BOTTOM_OF_FIELD},
+	{105, BOTTOM_OF_FIELD}, {125, BOTTOM_OF_FIELD},
+	{260, TOP_OF_FIELD}, {280, TOP_OF_FIELD}, {300, TOP_OF_FIELD},
+	{320, TOP_OF_FIELD}, {340, TOP_OF_FIELD}
+}
+
 -- a match is best of three: the first side to win this many rounds takes it
 local ROUNDS_TO_WIN = 2
 -- tournament 2 rule: a ball nobody picks up for this long changes sides
@@ -60,10 +76,10 @@ local match_in_progress = false
 local current_tournament = nil
 local opponent = nil
 local player = nil
-local top_of_field = 95
-local right_of_field = 365
-local bottom_of_field = 185
-local left_of_field = 35
+local top_of_field = TOP_OF_FIELD
+local right_of_field = RIGHT_OF_FIELD
+local bottom_of_field = BOTTOM_OF_FIELD
+local left_of_field = LEFT_OF_FIELD
 local player_carrying = nil
 local opponent_carrying = nil
 local opponent_health = nil
@@ -160,7 +176,7 @@ function ball_resting_on_side(i, side)
 	if ball_movement_timers[i].value ~= ball_movement_timers[i].endValue then
 		return false
 	end
-	local middle_of_field = (top_of_field + bottom_of_field) / 2
+	local middle_of_field = FIELD_MIDPOINT
 	if side == 'player' then
 		return ball_sprites[i].y > middle_of_field
 	else
@@ -465,74 +481,38 @@ function build_health_bars(player_blocks, opponent_blocks)
 		opponent_blocks = CHARACTERS[opponent]['health']
 	end
 
-	player_health_sprites = {
-		gfx.sprite.new(gfx.image.new('assets/health/player_heart'))
-	}
-	player_health_sprites[1]:moveTo(
-		380,
-		215
-	)
-	player_health_sprites[1]:setZIndex(Z_HEALTH)
-	player_health_sprites[1]:add()
-	local horizontal_position = 376
-	for i=1, player_blocks do
-		horizontal_position -= 13
-		local health_block = gfx.sprite.new(gfx.image.new('assets/health/block'))
-		health_block:setZIndex(Z_HEALTH)
-		health_block:moveTo(
-			horizontal_position,
-			215
-		)
-		health_block:add()
-		table.insert(
-			player_health_sprites,
-			health_block
-		)
+	local function build_bar(heart_asset, x, y, blocks, direction, first_block_x)
+		local sprites = {gfx.sprite.new(gfx.image.new(heart_asset))}
+		sprites[1]:moveTo(x, y)
+		sprites[1]:setZIndex(Z_HEALTH)
+		sprites[1]:add()
+		local block_x = first_block_x
+		for i=1, blocks do
+			block_x += direction * HEALTH_BLOCK_SPACING
+			local block = gfx.sprite.new(gfx.image.new('assets/health/block'))
+			block:setZIndex(Z_HEALTH)
+			block:moveTo(block_x, y)
+			block:add()
+			table.insert(sprites, block)
+		end
+		return sprites
 	end
 
-	opponent_health_sprites = {
-		gfx.sprite.new(gfx.image.new('assets/health/cpu_heart'))
-	}
-	opponent_health_sprites[1]:moveTo(
-		25,
-		20
+	player_health_sprites = build_bar(
+		'assets/health/player_heart', PLAYER_HEALTH_HEART_POSITION[1],
+		PLAYER_HEALTH_HEART_POSITION[2], player_blocks, -1, 376
 	)
-	opponent_health_sprites[1]:setZIndex(Z_HEALTH)
-	opponent_health_sprites[1]:add()
-	horizontal_position = 42
-	for i=1, opponent_blocks do
-		local health_block = gfx.sprite.new(gfx.image.new('assets/health/block'))
-		health_block:setZIndex(Z_HEALTH)
-		health_block:moveTo(
-			horizontal_position,
-			20
-		)
-		health_block:add()
-		table.insert(
-			opponent_health_sprites,
-			health_block
-		)
-		horizontal_position += 13
-	end
+	opponent_health_sprites = build_bar(
+		'assets/health/cpu_heart', OPPONENT_HEALTH_HEART_POSITION[1],
+		OPPONENT_HEALTH_HEART_POSITION[2], opponent_blocks, 1, 29
+	)
 end
 
 function place_balls()
-	local ball_start_positions = {
-		{ 45, bottom_of_field},
-		{ 65, bottom_of_field},
-		{ 85, bottom_of_field},
-		{105, bottom_of_field},
-		{125, bottom_of_field},
-		{260, top_of_field},
-		{280, top_of_field},
-		{300, top_of_field},
-		{320, top_of_field},
-		{340, top_of_field}
-	}
 	for i=1, #ball_sprites do
 		ball_sprites[i]:moveTo(
-			ball_start_positions[i][1],
-			ball_start_positions[i][2]
+			BALL_START_POSITIONS[i][1],
+			BALL_START_POSITIONS[i][2]
 		)
 		ball_sprites[i]:setCollideRect(
 			2,
@@ -546,8 +526,8 @@ function place_balls()
 		-- and its collisions stay off until it is thrown
 		ball_movement_timers[i] = pd.timer.new(
 			1,
-			ball_start_positions[i][2],
-			ball_start_positions[i][2]
+			BALL_START_POSITIONS[i][2],
+			BALL_START_POSITIONS[i][2]
 		)
 		ball_idle_time[i] = 0
 		ball_in_play[i] = false
@@ -557,14 +537,14 @@ end
 function place_fighters()
 	opponent_sprite:setImage(CHARACTERS[opponent]['assets']['idle_cpu'])
 	opponent_sprite:moveTo(
-		math.floor( pd.display.getWidth() / 2),
+		math.floor( FIELD_MIDPOINT),
 		70
 	)
 	opponent_sprite:setCollisionsEnabled(true)
 
 	player_sprite:setImage(CHARACTERS[player]['assets']['idle_player'])
 	player_sprite:moveTo(
-		math.floor( pd.display.getWidth() / 2),
+		math.floor( FIELD_MIDPOINT),
 		170
 	)
 	player_sprite:setCollisionsEnabled(true)
@@ -762,6 +742,14 @@ function abandon_match()
 	initialise()
 end
 
+local function wander_opponent()
+	if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
+		opponent_destination = math.random(right_of_field)
+		if opponent_destination < left_of_field then opponent_destination = left_of_field end
+	end
+	opponent_move(opponent_destination)
+end
+
 function opponent_act_easy()
 	local destination = nil
 	if opponent_carrying then
@@ -788,13 +776,7 @@ function opponent_act_easy()
 			end
 		end -- /for
 		if nearest_ball == nil then
-			if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
-				opponent_destination = math.random(right_of_field)
-				if opponent_destination < left_of_field then
-					opponent_destination = left_of_field
-				end
-			end
-			opponent_move(opponent_destination)
+			wander_opponent()
 		else
 			opponent_move(ball_sprites[nearest_ball].x)
 			opponent_pickup()
@@ -816,45 +798,32 @@ function opponent_throw()
 	end
 end
 
-function opponent_move(destination)
-	if destination > opponent_sprite.x then
-		opponent_step += 1
-		if opponent_step > #CHARACTERS[opponent]['assets']['run_sequence'] then
-			opponent_step = 1
-		end
-		opponent_sprite:setImage(
-			CHARACTERS[opponent]['assets']['run_sequence'][opponent_step],
-			'flipX'
-		)
-		opponent_sprite:moveTo(
-			opponent_sprite.x + CHARACTERS[opponent]['speed'],
-			opponent_sprite.y
-		)
-		if opponent_carrying ~= nil then
-			ball_sprites[opponent_carrying]:moveTo(
-				opponent_sprite.x - CHARACTERS[opponent]['carry_position'][1],
-				opponent_sprite.y + CHARACTERS[opponent]['carry_position'][2]
-			)
-		end
-	else
-		opponent_step -= 1
-		if opponent_step == 0 then
-			opponent_step = #CHARACTERS[opponent]['assets']['run_sequence']
-		end
-		opponent_sprite:setImage(
-			CHARACTERS[opponent]['assets']['run_sequence'][opponent_step]
-		)
-		opponent_sprite:moveTo(
-			opponent_sprite.x - CHARACTERS[opponent]['speed'],
-			opponent_sprite.y
-		)
-		if opponent_carrying ~= nil then
-			ball_sprites[opponent_carrying]:moveTo(
-				opponent_sprite.x + CHARACTERS[opponent]['carry_position'][1],
-				opponent_sprite.y + CHARACTERS[opponent]['carry_position'][2]
-			)
-		end
+local function move_character(side, destination, carrying, delta)
+	local is_player = side == 'player'
+	local sprite = is_player and player_sprite or opponent_sprite
+	local character = is_player and player or opponent
+	local step = is_player and player_step or opponent_step
+	local sequence = (is_player and CHARACTERS[character]['assets']['player_run_sequence']) or CHARACTERS[character]['assets']['run_sequence']
+	local direction = destination > sprite.x and 1 or -1
+	step += direction
+	if step > #sequence then step = 1 elseif step < 1 then step = #sequence end
+	if is_player then player_step = step else opponent_step = step end
+	sprite:setImage(sequence[step], direction > 0 and 'flipX' or nil)
+	local speed = CHARACTERS[character]['speed']
+	if is_player and player_dash_time > 0 then speed *= DASH_SPEED_MULTIPLIER end
+	local new_x = sprite.x + direction * speed
+	if is_player then
+		new_x = math.max(left_of_field, math.min(right_of_field, new_x))
 	end
+	sprite:moveTo(new_x, sprite.y)
+	if carrying ~= nil then
+		local offset = CHARACTERS[character]['carry_position'][1]
+		ball_sprites[carrying]:moveTo(sprite.x + direction * (is_player and offset or -offset), sprite.y + CHARACTERS[character]['carry_position'][2])
+	end
+end
+
+function opponent_move(destination)
+	move_character('opponent', destination, opponent_carrying)
 end
 
 function opponent_pickup()
@@ -898,13 +867,7 @@ function opponent_act_medium()
 		else
 			-- print('< 5 balls available')
 			-- print('Move at random')
-			if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
-				opponent_destination = math.random(right_of_field)
-				if opponent_destination < left_of_field then
-					opponent_destination = left_of_field
-				end
-			end
-			opponent_move(opponent_destination)
+			wander_opponent()
 		end
 
 	else
@@ -927,15 +890,22 @@ function opponent_act_medium()
 		else
 			-- print('No ball available')
 			-- print('Move at random')
-			if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
-				opponent_destination = math.random(right_of_field)
-				if opponent_destination < left_of_field then
-					opponent_destination = left_of_field
-				end
-			end
-			opponent_move(opponent_destination)
+			wander_opponent()
 		end
 	end
+end
+
+local function retreat_from_player()
+	if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
+		if player_sprite.x > FIELD_MIDPOINT then
+			opponent_destination = math.random(FIELD_MIDPOINT)
+			if opponent_destination < left_of_field then opponent_destination = left_of_field end
+		elseif player_sprite.x < FIELD_MIDPOINT then
+			opponent_destination = math.random(right_of_field)
+			if opponent_destination < FIELD_MIDPOINT then opponent_destination = right_of_field end
+		end
+	end
+	opponent_move(opponent_destination)
 end
 
 function opponent_act_hard()
@@ -943,7 +913,7 @@ function opponent_act_hard()
 	local balls_on_right = {}
 	for i=1, #ball_sprites do
 		if ball_resting_on_side(i, 'opponent') then
-			if ball_sprites[i].x > (pd.display.getWidth() / 2) then
+			if ball_sprites[i].x > FIELD_MIDPOINT then
 				table.insert(balls_on_right, i)
 			else
 				table.insert(balls_on_left, i)
@@ -962,41 +932,13 @@ function opponent_act_hard()
 				opponent_throw()
 			else
 				-- Player not nearby
-				if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
-					-- print('Move away from player')
-					if player_sprite.x > (pd.display.getWidth() / 2) then 
-						opponent_destination = math.random((pd.display.getWidth() / 2))
-						if opponent_destination < left_of_field then
-							opponent_destination = left_of_field
-						end
-					elseif player_sprite.x < (pd.display.getWidth() / 2) then
-						opponent_destination = math.random(right_of_field)
-						if opponent_destination < (pd.display.getWidth() / 2) then
-							opponent_destination = right_of_field
-						end
-					end
-				end
-				opponent_move(opponent_destination)
+				retreat_from_player()
 			end
 
 		else
 			-- Too few balls available
 			-- print('No balls, move away from player')
-			if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
-				-- print('Move away from player')
-				if player_sprite.x > (pd.display.getWidth() / 2) then 
-					opponent_destination = math.random((pd.display.getWidth() / 2))
-					if opponent_destination < left_of_field then
-						opponent_destination = left_of_field
-					end
-				elseif player_sprite.x < (pd.display.getWidth() / 2) then
-					opponent_destination = math.random(right_of_field)
-					if opponent_destination < (pd.display.getWidth() / 2) then
-						opponent_destination = right_of_field
-					end
-				end
-			end
-			opponent_move(opponent_destination)
+			retreat_from_player()
 		end
 	else
 		-- Not carrying
@@ -1022,13 +964,7 @@ function opponent_act_hard()
 			opponent_pickup()
 		else
 			-- no ball to chase, so wander like the other difficulties do
-			if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
-				opponent_destination = math.random(right_of_field)
-				if opponent_destination < left_of_field then
-					opponent_destination = left_of_field
-				end
-			end
-			opponent_move(opponent_destination)
+			wander_opponent()
 		end
 	end
 end
@@ -1109,79 +1045,16 @@ function player_move(carrying, delta)
 		player_dash_cooldown = DASH_COOLDOWN_SECONDS
 	end
 
-	local speed = CHARACTERS[player]['speed']
-	if player_dash_time > 0 then
-		speed = speed * DASH_SPEED_MULTIPLIER
-	end
-
-	if moving_left then
-		player_step -= 1
-		if player_step < 1 then
-			player_step = #CHARACTERS[player]['assets']['run_sequence']
-		end
-		player_sprite:setImage(
-			CHARACTERS[player]['assets']['run_sequence'][player_step]
-		)
-		
-		if (player_sprite.x - speed) < left_of_field then
-			player_sprite:moveTo(
-				left_of_field,
-				player_sprite.y
-			)
-		else
-			player_sprite:moveTo(
-				player_sprite.x - speed,
-				player_sprite.y
-			)
-		end
-		if carrying ~= nil then
-			ball_sprites[carrying]:moveTo(
-				player_sprite.x - CHARACTERS[player]['carry_position'][1],
-				player_sprite.y + CHARACTERS[player]['carry_position'][2]
-			)
-		end
-
-	elseif moving_right then
-		player_step += 1
-		if player_step > #CHARACTERS[player]['assets']['run_sequence'] then
-			player_step = 1
-		end
-		player_sprite:setImage(
-			CHARACTERS[player]['assets']['run_sequence'][player_step],
-			'flipX'
-		)
-		if (player_sprite.x + speed) > right_of_field then
-			player_sprite:moveTo(
-				right_of_field,
-				player_sprite.y
-			)
-		else
-			player_sprite:moveTo(
-				player_sprite.x + speed,
-				player_sprite.y
-			)
-		end
-		if carrying ~= nil then
-			ball_sprites[carrying]:moveTo(
-				player_sprite.x + CHARACTERS[player]['carry_position'][1],
-				player_sprite.y + CHARACTERS[player]['carry_position'][2]
-			)
-		end
-
+	local moving_right = pd.buttonIsPressed(pd.kButtonRight)
+	if moving_left or moving_right then
+		move_character('player', moving_right and right_of_field or left_of_field, carrying, delta)
 	else
-		if player_sprite.x < pd.display.getWidth() / 2 then
-			player_sprite:setImage(
-				CHARACTERS[player]['assets']['idle_player'],
-				'flipX'
-			)
+		if player_sprite.x < FIELD_MIDPOINT then
+			player_sprite:setImage(CHARACTERS[player]['assets']['idle_player'], 'flipX')
 		else
-			player_sprite:setImage(
-				CHARACTERS[player]['assets']['idle_player']
-			)
+			player_sprite:setImage(CHARACTERS[player]['assets']['idle_player'])
 		end
 	end
-
-	-- TODO: handle tortoise's different CPU & player run frames
 end
 
 function player_pickup()
@@ -1251,7 +1124,7 @@ function play_match(tourament_name, opponent_num, selected_character)
 		local background_image = gfx.image.new('assets/backgrounds/pitch_' .. tourament_name)
 		background_sprite = gfx.sprite.new(background_image)
 		background_sprite:moveTo(
-			math.floor( pd.display.getWidth() / 2),
+			math.floor( FIELD_MIDPOINT),
 			math.floor( pd.display.getHeight() / 2)
 		)
 		background_sprite:setZIndex(Z_BACKGROUND)
@@ -1259,7 +1132,7 @@ function play_match(tourament_name, opponent_num, selected_character)
 
 		opponent_sprite = gfx.sprite.new(CHARACTERS[opponent]['assets']['idle_cpu'])
 		opponent_sprite:moveTo(
-			math.floor( pd.display.getWidth() / 2),
+			math.floor( FIELD_MIDPOINT),
 			70
 		)
 		opponent_sprite:setCollideRect(
@@ -1274,7 +1147,7 @@ function play_match(tourament_name, opponent_num, selected_character)
 		local pitch_image = gfx.image.new('assets/backgrounds/pitch')
 		pitch_sprite = gfx.sprite.new(pitch_image)
 		pitch_sprite:moveTo(
-			math.floor( pd.display.getWidth() / 2),
+			math.floor( FIELD_MIDPOINT),
 			math.floor( pd.display.getHeight() / 2)
 		)
 		pitch_sprite:setZIndex(Z_PITCH)
@@ -1285,7 +1158,7 @@ function play_match(tourament_name, opponent_num, selected_character)
 
 		player_sprite = gfx.sprite.new(CHARACTERS[player]['assets']['idle_player'])
 		player_sprite:moveTo(
-			math.floor( pd.display.getWidth() / 2),
+			math.floor( FIELD_MIDPOINT),
 			170
 		)
 		player_sprite:setCollideRect(

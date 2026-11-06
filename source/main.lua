@@ -65,7 +65,16 @@ local progress = nil
 local new_tournament_unlocked = false
 local new_character_unlocked = false
 
+local INTRO_DELAY_MS = 5000
 local scene = nil
+-- Exact scene dispatch avoids substring collisions (notably finished_*).
+local SCENE_HANDLERS = {
+	main_menu = 'main_menu', credits = 'credits',
+	tournament_selection = 'tournament_selection', character_selection = 'character_selection',
+	tournament_house = 'tournament_intro', tournament_garden = 'tournament_intro', tournament_park = 'tournament_intro',
+	finished_tournament_house = 'tournament_finished', finished_tournament_garden = 'tournament_finished', finished_tournament_park = 'tournament_finished',
+	match = 'match', winner_player = 'winner', winner_opponent = 'winner', scores = 'scores'
+}
 local tournament_name = nil
 local selected_character = 'bunny'
 local opponent_no = 1
@@ -382,7 +391,7 @@ end
 function pd.gameWillPause()
 	-- Executed when the system menu opens. pd.update stops being called, so the
 	-- match cannot advance; the pause overlay takes over when the menu closes.
-	if scene ~= nil and string.find(scene, 'match') then
+	if scene == 'match' then
 		paused = true
 		pause_ready = false
 		pause_option = 1
@@ -462,7 +471,7 @@ function pd.update()
 			if choice == 'resume' then
 				resume_match_clock() -- from match.lua
 			elseif choice == 'forfeit' then
-				if string.find(scene, 'match') then
+				if scene == 'match' then
 					abandon_match() -- from match.lua
 				end
 				clear_run()
@@ -470,7 +479,7 @@ function pd.update()
 			else
 				-- quit keeps the run saved, so relaunching resumes it
 				save_run()
-				if string.find(scene, 'match') then
+				if scene == 'match' then
 					abandon_match() -- from match.lua
 				end
 				scene = 'main_menu'
@@ -501,23 +510,23 @@ function pd.update()
 			scene = tournament_name
 		end
 
-	elseif scene == 'main_menu' then
+	elseif SCENE_HANDLERS[scene] == 'main_menu' then
 		scene = main_menu() -- from menu.lua
 
-	elseif scene == 'credits' then
+	elseif SCENE_HANDLERS[scene] == 'credits' then
 		scene = credits() -- from menu.lua
 
-	elseif scene == 'tournament_selection' then
+	elseif SCENE_HANDLERS[scene] == 'tournament_selection' then
 		scene, tournament_name = select_tournament(progress['tournament']) -- from menu.lua
 	
-	elseif scene == 'character_selection' then
+	elseif SCENE_HANDLERS[scene] == 'character_selection' then
 		local next_scene, next_character = select_character(tournament_name, progress['characters']) -- from menu.lua
 		scene = next_scene
 		if next_character ~= nil then
 			-- B backs out without choosing, so keep the previous character
 			selected_character = next_character
 		end
-		if string.find(scene, 'tournament_') and scene ~= 'tournament_selection' then
+		if scene == 'tournament_house' or scene == 'tournament_garden' or scene == 'tournament_park' then
 			-- a tournament run starts here, so reset its per-run state
 			opponent_no = 1
 			STATS['point_total'] = 0
@@ -527,7 +536,7 @@ function pd.update()
 			save_run()
 		end
 
-	elseif string.find(scene, 'finished') then
+	elseif SCENE_HANDLERS[scene] == 'tournament_finished' then
 		if progress['tournament'] == 1 and new_tournament_unlocked ~= true then
 			progress['tournament'] = 2
 			new_tournament_unlocked = true
@@ -552,22 +561,22 @@ function pd.update()
 			clear_run()
 		end
 
-	elseif string.find(scene, 'tournament') then
+	elseif SCENE_HANDLERS[scene] == 'tournament_intro' then
 		set_tournament_timer, tournament_name = tournament_intro(scene, opponent_no) -- from tournament.lua
 		if set_tournament_timer then
-			pd.timer.performAfterDelay(5000, start_match, tournament_name, opponent_no)  -- from match.lua
+			pd.timer.performAfterDelay(INTRO_DELAY_MS, start_match, tournament_name, opponent_no)  -- from match.lua
 		end
 
-	elseif string.find(scene, 'match') then
+	elseif SCENE_HANDLERS[scene] == 'match' then
 		new_tournament_unlocked = false
 		new_character_unlocked = false
 		scene = play_match(nil, nil, selected_character) -- from match.lua
 
-	elseif string.find(scene, 'winner') then
-		winner = scene:gsub('winner_', '')
+	elseif SCENE_HANDLERS[scene] == 'winner' then
+		winner = scene == 'winner_player' and 'player' or 'opponent'
 		if winner == 'player' then
 			scene = match_end(tournament_name, selected_character, 'WIN') -- from tournament.lua
-			if string.find(scene, 'tournament') then
+			if scene == 'tournament_house' or scene == 'tournament_garden' or scene == 'tournament_park' then
 				clear_tournament_sprites() -- from tournament.lua
 				if opponent_no < 3 then
 					opponent_no += 1
@@ -584,7 +593,7 @@ function pd.update()
 			end
 		end
 
-	elseif scene == 'scores' then
+	elseif SCENE_HANDLERS[scene] == 'scores' then
 		scene = scores()
 
 	end

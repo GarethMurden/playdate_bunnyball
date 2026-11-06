@@ -256,14 +256,14 @@ CHARACTERS = {
 				gfx.image.new('assets/animals/tortoise_run_04.png')
 			},
 			player_run_sequence = {
-				gfx.image.new('assets/animals/tortoise_run_01.png'),
-				gfx.image.new('assets/animals/tortoise_run_01.png'),
-				gfx.image.new('assets/animals/tortoise_run_02.png'),
-				gfx.image.new('assets/animals/tortoise_run_02.png'),
-				gfx.image.new('assets/animals/tortoise_run_03.png'),
-				gfx.image.new('assets/animals/tortoise_run_03.png'),
-				gfx.image.new('assets/animals/tortoise_run_04.png'),
-				gfx.image.new('assets/animals/tortoise_run_04.png')
+				gfx.image.new('assets/animals/tortoise_player_run_01.png'),
+				gfx.image.new('assets/animals/tortoise_player_run_01.png'),
+				gfx.image.new('assets/animals/tortoise_player_run_02.png'),
+				gfx.image.new('assets/animals/tortoise_player_run_02.png'),
+				gfx.image.new('assets/animals/tortoise_player_run_03.png'),
+				gfx.image.new('assets/animals/tortoise_player_run_03.png'),
+				gfx.image.new('assets/animals/tortoise_player_run_04.png'),
+				gfx.image.new('assets/animals/tortoise_player_run_04.png')
 			}
 		}
 	},

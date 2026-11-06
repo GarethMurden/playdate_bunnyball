@@ -190,25 +190,38 @@ was prepared on is arm64. Every changed call site was read, and all six Lua file
 
 ## Phase 5 — High-risk work
 
-The other half of the remaining work. Each item touches gameplay logic, movement, field
-maths or scene dispatch, so they are kept out of Phase 4.
+Done, on branch `phase-5-high-risk`, based on `phase-4-low-risk`.
 
-- **Hoist constants.** Field bounds (`top_of_field`, `right_of_field`, `bottom_of_field`,
-  `left_of_field`), health-bar positions, ball start positions and the 5-second intro
-  delay are hardcoded or file-local; make them named constants.
-- **De-duplicate.** `opponent_act_medium`/`opponent_act_hard`, `player_move`/
-  `opponent_move`, the two health-bar builders and the repeated "measure, centre, draw"
-  pattern in `menu.lua`.
-- **Tortoise player run frames.** `tortoise_player_run_01`–`04` are unused; the
-  `player_run_sequence` entry in `characters.lua` points at the CPU frames and
-  `player_move` has a `TODO` about it. Wire the player-side frames in.
-- **Scene-handler table.** Replace the string-based scene machine
-  (`string.find(scene, 'tournament')` and friends) with a table of scene handlers.
-- **Refresh rate.** Consider `pd.display.setRefreshRate` and offscreen/flush usage;
-  everything currently runs at the default 30 fps with a full `gfx.clear()` each frame.
-- **Globals.** `STATS`, `TOURNAMENT_MATCHES`, `ANIMALS`, `CHARACTERS` and roughly twenty
-  functions are shared across five files, which makes every rename risky.
-- **Lint and CI** so the `hit_palyer` class of typo is caught.
+- **Named layout/timing constants.** Field edges and midpoint, health-bar heart
+  positions and spacing, all ten ball start positions, and the five-second intro
+  delay are named constants. The AI midpoint checks now use the shared field
+  midpoint rather than querying display width. Existing numeric values are retained.
+- **Deduplicated logic.** Medium/hard AI wandering and hard-AI retreat destinations
+  share helpers. Player/opponent movement shares an animation/movement routine;
+  player-side assets fall back to the regular run sequence for other characters.
+  Health bars share a directional builder while preserving their separate heart
+  assets and positions. `menu.lua` uses `draw_centered` for repeated centered text.
+- **Tortoise player frames.** Tortoise player movement uses the existing
+  `tortoise_player_run_01`–`04` image assets; the CPU continues using the CPU-side
+  sequence.
+- **Scene dispatch.** `pd.update` now dispatches exact scene names through a handler
+  table. The `winner_*` and `finished_tournament_*` states are distinct, avoiding
+  substring collisions; transitions and the existing update/timer order remain in
+  the same branches.
+- **Menu refresh rate deferred.** No `setRefreshRate` call is added. Menus run in the
+  same `pd.update` loop as scene transitions and the pause/clear-save overlays, and
+  there is no isolated menu loop or measured timing evidence to establish that
+  changing refresh rate would leave input and timer behavior unchanged. Keeping the
+  default is the safer choice.
+
+The broader globals and lint/CI observations from the original review are not part
+of the accepted Phase 5 implementation scope. No other Phase 3 work was changed.
+
+The game was not built or run: the Playdate SDK is x86_64-only, while HomeServer is
+arm64. All six Lua source files pass `luac -p` on temporary copies after mechanically
+removing Playdate-specific `<const>` and compound-assignment syntax. This checks
+ordinary Lua syntax only, not Playdate API behavior or runtime visuals; run the
+Simulator and hardware checks on the SDK-equipped Windows machine.
 
 ## Still pending from ガレス
 

@@ -9,6 +9,12 @@ local small_white_font = gfx.font.new('assets/fonts/small_white')
 local small_font = gfx.font.new('assets/fonts/small')
 local tiny_font = gfx.font.new('assets/fonts/tiny')
 
+-- Measure and centre a single line using the active font.
+local function draw_centered(text, y)
+	local text_width = gfx.getTextSize(text)
+	gfx.drawText(text, math.floor((pd.display.getWidth() / 2) - (text_width / 2)), y)
+end
+
 -- the version comes from source/pdxinfo at build time
 local version = (pd.metadata and pd.metadata.version) or '0.3'
 
@@ -60,47 +66,17 @@ function credits()
 
 		gfx.setFont(medium_font)
 		local text = 'a game by PangolinPaw'
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			25
-		)
+		draw_centered(text, 25)
 		local text = 'art by KuroganeNiello'
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			55
-		)
+		draw_centered(text, 55)
 		local text = 'and music from Dedediego'
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			85
-		)
+		draw_centered(text, 85)
 		local text = 'with special thanks to'
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			140
-		)
+		draw_centered(text, 140)
 		local text = 'Toad and PizzaDev'
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			170
-		)
+		draw_centered(text, 170)
 		local text = 'from the PlaydateSquad'
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			200
-		)
+		draw_centered(text, 200)
 
 		gfx.popContext()
 
@@ -138,12 +114,7 @@ function main_menu()
 
 		gfx.setFont(large_font)
 		local text = 'BUNNYBALL'
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			27
-		)
+		draw_centered(text, 27)
 
 		gfx.setFont(medium_font)
 		gfx.drawText(
@@ -164,12 +135,7 @@ function main_menu()
 
 		gfx.setFont(small_white_font)
 		local text = '2023                    PangolinPaw                    v' .. version
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			230
-		)
+		draw_centered(text, 230)
 
 		gfx.popContext()
 
@@ -494,12 +460,7 @@ function select_tournament(unlocked_tournaments)
 
 		gfx.setFont(medium_font)
 		local text = 'SELECT TOURNAMENT'
-		local text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			27
-		)
+		draw_centered(text, 27)
 
 		gfx.setFont(tiny_font)
 		local text = 'house'
