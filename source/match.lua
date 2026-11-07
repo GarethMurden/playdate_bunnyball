@@ -580,6 +580,9 @@ function build_hud()
 	-- sits in the light box at the top centre of the pitch background
 	local hud_image = gfx.image.new(120, 26)
 	gfx.pushContext(hud_image)
+	gfx.setColor(gfx.kColorWhite)
+	gfx.fillRect(0, 0, 120, 26)
+	gfx.setColor(gfx.kColorBlack)
 	gfx.setFont(small_font)
 
 	local text = 'ROUND ' .. round_number
@@ -817,6 +820,20 @@ function opponent_throw()
 end
 
 function opponent_move(destination)
+	local speed = CHARACTERS[opponent]['speed']
+	-- Clamp the final step so the opponent cannot overshoot a target and reverse
+	-- direction forever when its speed does not divide the remaining distance.
+	if math.abs(destination - opponent_sprite.x) <= speed then
+		local direction = destination >= opponent_sprite.x and -1 or 1
+		opponent_sprite:moveTo(destination, opponent_sprite.y)
+		if opponent_carrying ~= nil then
+			ball_sprites[opponent_carrying]:moveTo(
+				opponent_sprite.x + (direction * CHARACTERS[opponent]['carry_position'][1]),
+				opponent_sprite.y + CHARACTERS[opponent]['carry_position'][2]
+			)
+		end
+		return
+	end
 	if destination > opponent_sprite.x then
 		opponent_step += 1
 		if opponent_step > #CHARACTERS[opponent]['assets']['run_sequence'] then

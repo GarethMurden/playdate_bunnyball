@@ -214,6 +214,10 @@ function draw_pause_menu()
 		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
 		72
 	)
+	gfx.setFont(small_font)
+	local hint = 'Press A to unpause'
+	local hint_width, _ = gfx.getTextSize(hint)
+	gfx.drawText(hint, math.floor((pd.display.getWidth() - hint_width) / 2), 88)
 
 	gfx.setFont(small_font)
 	for i=1, #pause_options do
@@ -460,6 +464,7 @@ function pd.update()
 			paused = false
 			play_sound('menu_select')
 			if choice == 'resume' then
+				gfx.sprite.redrawBackground()
 				resume_match_clock() -- from match.lua
 			elseif choice == 'forfeit' then
 				if string.find(scene, 'match') then
@@ -478,6 +483,7 @@ function pd.update()
 		elseif pd.buttonJustPressed(pd.kButtonB) then
 			paused = false
 			play_sound('menu_back')
+			gfx.sprite.redrawBackground()
 			resume_match_clock() -- from match.lua
 		end
 		gfx.sprite.update()
