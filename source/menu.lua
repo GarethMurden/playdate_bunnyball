@@ -10,7 +10,7 @@ local small_font = gfx.font.new('assets/fonts/small')
 local tiny_font = gfx.font.new('assets/fonts/tiny')
 
 -- the version comes from source/pdxinfo at build time
-local version = (pd.metadata and pd.metadata.version) or '0.3'
+local version = (pd.metadata and pd.metadata.version) or '0.4'
 
 local background_sprite = nil
 local arrow_right = gfx.sprite.new(gfx.image.new('assets/arrow_right'))
