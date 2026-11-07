@@ -79,7 +79,7 @@ local clear_save_prompt_ready = false
 local paused = false
 local pause_ready = false
 local pause_option = 1
-local pause_options = {'resume', 'forfeit', 'quit'}
+local pause_options = {'resume', 'forfeit'}
 
 -- scores screen
 local scores_background = nil
@@ -202,9 +202,10 @@ function draw_clear_save_prompt()
 end
 
 function draw_pause_menu()
-	gfx.setColor(gfx.kColorBlack)
-	gfx.fillRect(100, 60, 200, 120)
 	gfx.setColor(gfx.kColorWhite)
+	gfx.fillRect(100, 60, 200, 90)
+	gfx.setColor(gfx.kColorBlack)
+	gfx.drawRect(100, 60, 200, 90)
 
 	gfx.setFont(medium_font)
 	local text = 'PAUSED'
@@ -214,10 +215,6 @@ function draw_pause_menu()
 		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
 		72
 	)
-	gfx.setFont(small_font)
-	local hint = 'Press A to unpause'
-	local hint_width, _ = gfx.getTextSize(hint)
-	gfx.drawText(hint, math.floor((pd.display.getWidth() - hint_width) / 2), 88)
 
 	gfx.setFont(small_font)
 	for i=1, #pause_options do
@@ -226,7 +223,7 @@ function draw_pause_menu()
 		local x = math.floor( (pd.display.getWidth() / 2) - (text_width / 2) )
 		local y = 100 + ((i - 1) * 22)
 		if i == pause_option then
-			gfx.drawText('>', x - 14, y)
+			gfx.image.new('assets/arrow_right'):draw(x - (math.floor(text_width / 2) + 5), y - 8)
 		end
 		gfx.drawText(text, x, y)
 	end
@@ -466,12 +463,6 @@ function pd.update()
 			if choice == 'resume' then
 				gfx.sprite.redrawBackground()
 				resume_match_clock() -- from match.lua
-			elseif choice == 'forfeit' then
-				if string.find(scene, 'match') then
-					abandon_match() -- from match.lua
-				end
-				clear_run()
-				scene = 'tournament_selection'
 			else
 				-- quit keeps the run saved, so relaunching resumes it
 				save_run()

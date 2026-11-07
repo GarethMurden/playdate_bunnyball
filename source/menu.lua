@@ -10,7 +10,7 @@ local small_font = gfx.font.new('assets/fonts/small')
 local tiny_font = gfx.font.new('assets/fonts/tiny')
 
 -- the version comes from source/pdxinfo at build time
-local version = (pd.metadata and pd.metadata.version) or '0.4'
+local version = pd.metadata.version
 
 local background_sprite = nil
 local arrow_right = gfx.sprite.new(gfx.image.new('assets/arrow_right'))
@@ -163,7 +163,7 @@ function main_menu()
 		)
 
 		gfx.setFont(small_white_font)
-		local text = '2023                    PangolinPaw                    v' .. version
+		local text = '2026                    PangolinPaw                    v' .. version
 		local text_width, _ = gfx.getTextSize(text)
 		gfx.drawText(
 			text,

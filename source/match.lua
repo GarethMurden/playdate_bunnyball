@@ -578,28 +578,22 @@ function build_hud()
 	hud_sprite:remove()
 
 	-- sits in the light box at the top centre of the pitch background
-	local hud_image = gfx.image.new(120, 26)
+	local hud_image = gfx.image.new(60, 22)
 	gfx.pushContext(hud_image)
 	gfx.setColor(gfx.kColorWhite)
-	gfx.fillRect(0, 0, 120, 26)
+	gfx.fillRect(0, 0, 60, 22)
 	gfx.setColor(gfx.kColorBlack)
+	gfx.setLineWidth(2)
+	gfx.drawRect(0, 0, 60, 22)
 	gfx.setFont(small_font)
-
-	local text = 'ROUND ' .. round_number
-	local text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		math.floor( (120 - text_width) / 2 ),
-		0
-	)
 
 	-- rounds won: player first, then opponent
 	text = player_rounds .. ' - ' .. opponent_rounds
 	text_width, _ = gfx.getTextSize(text)
 	gfx.drawText(
 		text,
-		math.floor( (120 - text_width) / 2 ),
-		13
+		math.floor( (60 - text_width) / 2 ),
+		4
 	)
 	gfx.popContext()
 
