@@ -16,7 +16,7 @@ local score_box_sprite = nil
 local rating_sprite = nil
 local a_button_sprite = nil
 local banner_sprite = nil
-local podium_sprite = nill
+local podium_sprite = nil
 local unlock_notification_sprite = nil
 local player_sprite = gfx.sprite.new(CHARACTERS['bunny']['assets']['idle_cpu'])
 local opponent_sprites = {
@@ -150,6 +150,7 @@ function match_end(tournament_name, player_animal, outcome)
 	end
 
 	if pd.buttonJustPressed(pd.kButtonA) then
+		play_sound('menu_select')
 		if outcome == 'WIN' then
 			return 'tournament_' .. tournament_name
 		else
@@ -197,7 +198,7 @@ function show_rating()
 	gfx.popContext()
 end
 
-function tournament_end(tournament_name, selected_character, tournament_unlock, character_unlock)
+function tournament_end(tournament_name, selected_character, tournament_unlock, character_unlocked)
 	local location = tournament_name:gsub('tournament_', '')
 	if splash_screen_sprite == nil then
 		local splash_screen_image = gfx.image.new('assets/backgrounds/pitch_' .. location)
@@ -249,24 +250,28 @@ function tournament_end(tournament_name, selected_character, tournament_unlock, 
 		player_sprite:moveTo(200, 64)
 		player_sprite:add()
 
-		if tournament_unlock or character_unlock then
-			print('show notification')
+		if tournament_unlock or character_unlocked then
 			local notification_image = gfx.image.new('assets/tournament_end/unlock_notification')
 			gfx.pushContext(notification_image)
 			gfx.setFont(small_font)
-			local text = ''
+			-- both can happen on the same win, so the box can carry two lines
+			local lines = {}
 			if tournament_unlock then
-				text = 'TOURNAMENT UNLOCKED'
-			else
-				text = 'ANIMAL UNLOCKED'
+				table.insert(lines, 'TOURNAMENT UNLOCKED')
 			end
-			print(text)
-			local text_width, text_height = gfx.getTextSize(text)
-			gfx.drawText(
-				text,
-				math.floor(266 - (text_width / 2)),
-				math.floor(24 - (text_height / 2))
-			)
+			if character_unlocked then
+				table.insert(lines, 'ANIMAL UNLOCKED')
+			end
+			local line_height = 12
+			local first_y = math.floor(25 - ((#lines - 1) * line_height / 2))
+			for i=1, #lines do
+				local text_width, text_height = gfx.getTextSize(lines[i])
+				gfx.drawText(
+					lines[i],
+					math.floor(266 - (text_width / 2)),
+					math.floor(first_y + ((i - 1) * line_height) - (text_height / 2))
+				)
+			end
 			unlock_notification_sprite = gfx.sprite.new(notification_image)
 			unlock_notification_sprite:moveTo(
 				math.floor( pd.display.getWidth() / 2),
@@ -278,6 +283,7 @@ function tournament_end(tournament_name, selected_character, tournament_unlock, 
 
 	end
 	if pd.buttonJustPressed(pd.kButtonA) then
+		play_sound('menu_select')
 		clear_tournament_sprites()
 		return 'main_menu'
 	else

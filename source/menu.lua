@@ -9,6 +9,9 @@ local small_white_font = gfx.font.new('assets/fonts/small_white')
 local small_font = gfx.font.new('assets/fonts/small')
 local tiny_font = gfx.font.new('assets/fonts/tiny')
 
+-- the version comes from source/pdxinfo at build time
+local version = pd.metadata.version
+
 local background_sprite = nil
 local arrow_right = gfx.sprite.new(gfx.image.new('assets/arrow_right'))
 local arrow_down = gfx.sprite.new(gfx.image.new('assets/arrow_down'))
@@ -17,6 +20,11 @@ local locked_tournament_02 = nil
 local highlighted_option = 1
 local highlighted_2d_option = {1, 1}
 local character_sprite = gfx.sprite.new()
+-- the character-select name, one image per name, built the first time that name
+-- is highlighted and reused after that
+local character_name_images = {}
+local character_name_sprite = nil
+local character_name_shown = nil
 
 local statbars = {
 	[0] = gfx.image.new('assets/bar/0'),
@@ -106,6 +114,7 @@ function credits()
 	background_sprite:add()
 
 	if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
+		play_sound('menu_back')
 		background_sprite:remove()
 		background_sprite = nil
 		return 'main_menu' -- next scene
@@ -154,7 +163,7 @@ function main_menu()
 		)
 
 		gfx.setFont(small_white_font)
-		local text = '2023                    PangolinPaw                    v' .. VERSION
+		local text = '2026                    PangolinPaw                    v' .. version
 		local text_width, _ = gfx.getTextSize(text)
 		gfx.drawText(
 			text,
@@ -200,12 +209,15 @@ function main_menu()
 		if highlighted_option > #options then
 			highlighted_option = 1
 		end
+		play_sound('menu_move')
 	elseif pd.buttonJustPressed(pd.kButtonUp) then
 		highlighted_option -= 1
 		if highlighted_option < 1 then
 			highlighted_option = #options
 		end
+		play_sound('menu_move')
 	elseif pd.buttonJustPressed(pd.kButtonA) then
+		play_sound('menu_select')
 		arrow_right:remove()
 		background_sprite:remove()
 		background_sprite = nil
@@ -262,54 +274,79 @@ function select_character(tournament_name, unlocked_characters)
 
 	local highlighted_character_name = options[highlighted_2d_option[1]][highlighted_2d_option[2]]['name']
 
-	local background_image = gfx.image.new('assets/backgrounds/character_selection')
-	gfx.pushContext(background_image)
+	-- the art and the stat labels never change, so they are built once
+	if background_sprite == nil then
+		local background_image = gfx.image.new('assets/backgrounds/character_selection')
+		gfx.pushContext(background_image)
 
-	gfx.setFont(small_font)
-	local text = 'HP'
-	local text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		250 - text_width,
-		150
-	)
+		gfx.setFont(small_font)
+		local text = 'HP'
+		local text_width, _ = gfx.getTextSize(text)
+		gfx.drawText(
+			text,
+			250 - text_width,
+			150
+		)
 
-	local text = 'STR'
-	local text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		250 - text_width,
-		180
-	)
+		local text = 'STR'
+		local text_width, _ = gfx.getTextSize(text)
+		gfx.drawText(
+			text,
+			250 - text_width,
+			180
+		)
 
-	local text = 'SPD'
-	local text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		250 - text_width,
-		210
-	)
+		local text = 'SPD'
+		local text_width, _ = gfx.getTextSize(text)
+		gfx.drawText(
+			text,
+			250 - text_width,
+			210
+		)
 
-	gfx.setFont(medium_font)
-	local text = '???'
-	if in_table(highlighted_character_name, unlocked_characters) then
-		text = highlighted_character_name
+		gfx.popContext()
+
+		background_sprite = gfx.sprite.new(background_image)
+		background_sprite:moveTo(
+			math.floor( pd.display.getWidth() / 2),
+			math.floor( pd.display.getHeight() / 2)
+		)
 	end
-	local text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		math.floor( 100 - (text_width / 2) ),
-		185
-	)
-
-	gfx.popContext()
-
-	background_sprite = gfx.sprite.new(background_image)
-	background_sprite:moveTo(
-		math.floor( pd.display.getWidth() / 2),
-		math.floor( pd.display.getHeight() / 2)
-	)
 	background_sprite:add()
+
+	-- the name changes with the cursor, so it is its own image, rebuilt only
+	-- when the highlighted name changes
+	local name_text = '???'
+	if in_table(highlighted_character_name, unlocked_characters) then
+		name_text = highlighted_character_name
+	end
+	if character_name_sprite == nil then
+		character_name_sprite = gfx.sprite.new()
+		character_name_sprite:setZIndex(1)
+	end
+	if character_name_shown ~= name_text then
+		local name_image = character_name_images[name_text]
+		if name_image == nil then
+			name_image = gfx.image.new('assets/backgrounds/blank')
+			gfx.pushContext(name_image)
+			gfx.setFont(medium_font)
+			local text_width, _ = gfx.getTextSize(name_text)
+			gfx.drawText(
+				name_text,
+				math.floor( 100 - (text_width / 2) ),
+				185
+			)
+			gfx.popContext()
+			character_name_images[name_text] = name_image
+		end
+		character_name_sprite:setImage(name_image)
+		character_name_sprite:moveTo(
+			math.floor( pd.display.getWidth() / 2),
+			math.floor( pd.display.getHeight() / 2)
+		)
+		character_name_shown = name_text
+	end
+	character_name_sprite:add()
 
 	local icon_positions = {
 		{ 53,  63}, {102,  63}, {148,  63},
@@ -385,28 +422,56 @@ function select_character(tournament_name, unlocked_characters)
 		if highlighted_2d_option[1] > 3 then
 			highlighted_2d_option[1] = 1
 		end
+		play_sound('menu_move')
 
 	elseif pd.buttonJustPressed(pd.kButtonUp) then
 		highlighted_2d_option[1] -= 1
 		if highlighted_2d_option[1] < 1 then
 			highlighted_2d_option[1] = 3
 		end
+		play_sound('menu_move')
 
 	elseif pd.buttonJustPressed(pd.kButtonRight) then
 		highlighted_2d_option[2] += 1
 		if highlighted_2d_option[2] > 3 then
 			highlighted_2d_option[2] = 1
 		end
+		play_sound('menu_move')
 
 	elseif pd.buttonJustPressed(pd.kButtonLeft) then
 		highlighted_2d_option[2] -= 1
 		if highlighted_2d_option[2] < 1 then
 			highlighted_2d_option[2] = 3
 		end
+		play_sound('menu_move')
 
 	elseif pd.buttonJustPressed(pd.kButtonA) then
+		-- locked characters cannot be confirmed
+		if in_table(highlighted_character_name, unlocked_characters) then
+			play_sound('menu_select')
+			background_sprite:remove()
+			background_sprite = nil
+			character_name_sprite:remove()
+			character_name_shown = nil
+			arrow_down:remove()
+			character_sprite:remove()
+			stat_hp_sprite:remove()
+			stat_spd_sprite:remove()
+			stat_str_sprite:remove()
+			for i=1, #animal_icon_sprites do
+				animal_icon_sprites[i]:remove()
+			end
+			selected_character = options[highlighted_2d_option[1]][highlighted_2d_option[2]]['name']
+			next_scene = tournament_name
+		end
+
+	elseif pd.buttonJustPressed(pd.kButtonB) then
+		-- back out to tournament select
+		play_sound('menu_back')
 		background_sprite:remove()
 		background_sprite = nil
+		character_name_sprite:remove()
+		character_name_shown = nil
 		arrow_down:remove()
 		character_sprite:remove()
 		stat_hp_sprite:remove()
@@ -415,8 +480,7 @@ function select_character(tournament_name, unlocked_characters)
 		for i=1, #animal_icon_sprites do
 			animal_icon_sprites[i]:remove()
 		end
-		selected_character = options[highlighted_2d_option[1]][highlighted_2d_option[2]]['name']
-		next_scene = tournament_name
+		next_scene = 'tournament_selection'
 	end
 
 	return next_scene, selected_character
@@ -526,13 +590,16 @@ function select_tournament(unlocked_tournaments)
 		if highlighted_option > #options then
 			highlighted_option = 1
 		end
+		play_sound('menu_move')
 	elseif pd.buttonJustPressed(pd.kButtonLeft) then
 		highlighted_option -= 1
 		if highlighted_option < 1 then
 			highlighted_option = #options
 		end
+		play_sound('menu_move')
 	elseif pd.buttonJustPressed(pd.kButtonA) then
 		if highlighted_option <= unlocked_tournaments then
+			play_sound('menu_select')
 			arrow_down:remove()
 			background_sprite:remove()
 			background_sprite = nil
@@ -547,6 +614,7 @@ function select_tournament(unlocked_tournaments)
 			next_scene = 'character_selection'
 		end
 	elseif pd.buttonJustPressed(pd.kButtonB) then
+		play_sound('menu_back')
 		arrow_down:remove()
 		background_sprite:remove()
 		background_sprite = nil
