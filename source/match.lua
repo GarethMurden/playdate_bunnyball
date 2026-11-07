@@ -71,6 +71,7 @@ local player_health = nil
 local player_stunned = false
 local opponent_stunned = false
 local opponent_destination = left_of_field
+local opponent_target_ball = nil
 local match_ended = false
 local cleanup_done = false
 local player_step = 1
@@ -887,8 +888,31 @@ function opponent_pickup()
 		end -- /ball resting in the opponent's half
 	end -- /for i=1, #ball_sprites
 	if picked_up then
+		opponent_target_ball = nil
 		play_sound('ball_pickup')
 	end
+end
+
+-- Keep a loose-ball target while it remains available. Recomputing the nearest
+-- ball every frame can switch targets at their midpoint and make the CPU vibrate.
+function select_opponent_ball_target(balls_available)
+	if opponent_target_ball ~= nil then
+		for i=1, #balls_available do
+			if balls_available[i] == opponent_target_ball then return opponent_target_ball end
+		end
+	end
+	local nearest_ball = nil
+	local nearest_ball_distance = math.huge
+	for i=1, #balls_available do
+		local ball_index = balls_available[i]
+		local ball_distance = distance(ball_sprites[ball_index].x, opponent_sprite.x)
+		if ball_distance < nearest_ball_distance then
+			nearest_ball_distance = ball_distance
+			nearest_ball = ball_index
+		end
+	end
+	opponent_target_ball = nearest_ball
+	return nearest_ball
 end
 
 function opponent_act_medium()
@@ -922,15 +946,7 @@ function opponent_act_medium()
 		-- print('Not carrying')
 		if #balls_available > 0 then
 			-- print('Ball available')
-			local nearest_ball = balls_available[1]
-			local nearest_ball_distance = 800
-			for i=1, #balls_available do
-				local ball_distance = distance(ball_sprites[balls_available[i]].x, opponent_sprite.x)
-				if ball_distance < nearest_ball_distance then
-					nearest_ball_distance = ball_distance
-					nearest_ball = balls_available[i]
-				end
-			end
+			local nearest_ball = select_opponent_ball_target(balls_available)
 			-- print('Move to nearest ball')
 			opponent_destination = ball_sprites[nearest_ball].x
 			opponent_move(opponent_destination)
@@ -1019,15 +1035,7 @@ function opponent_act_hard()
 			balls_available = balls_on_right
 		end
 		if #balls_available > 0 then
-			local nearest_ball = balls_available[1]
-			local nearest_ball_distance = 800
-			for i=1, #balls_available do
-				local ball_distance = distance(ball_sprites[balls_available[i]].x, opponent_sprite.x)
-				if ball_distance < nearest_ball_distance then
-					nearest_ball_distance = ball_distance
-					nearest_ball = balls_available[i]
-				end
-			end
+			local nearest_ball = select_opponent_ball_target(balls_available)
 			opponent_destination = ball_sprites[nearest_ball].x
 			opponent_move(opponent_destination)
 			opponent_pickup()
