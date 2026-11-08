@@ -3,8 +3,13 @@
 A 1v1 ball game for the [Playdate](https://play.date/), inspired by
 [Penguin Wars](https://en.wikipedia.org/wiki/Penguin_Wars) on the Game Boy.
 
-Grab balls and throw them at your opponent to deplete their health before they do the same to you. Three tournaments of increasing difficulties to play through and 9 playable critters to unlock.
+Grab balls and throw them at your opponent to deplete their health before they do the same to you.
 
+![]()
+
+Three tournaments of increasing difficulties to play through and 9 playable critters to unlock.
+
+![character selection screen, with Health, Speed and Strengh stats for each animal](https://github.com/GarethMurden/playdate_bunnyball/blob/master/screenshots/character_selection.gif?raw=true)
 
 ## Play
 
