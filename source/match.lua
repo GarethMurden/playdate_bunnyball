@@ -69,6 +69,7 @@ local opponent_target_ball = nil
 
 local match_ended = false
 local cleanup_done = false
+local player_health_lost_this_match = 0
 local player_step = 1
 local opponent_step = 1
 
@@ -350,6 +351,9 @@ function initialise()
 	STATS['accuracy'] 	= 0
 	STATS['health'] 	= 0
 	STATS['points'] 	= 0
+	STATS['player_rounds'] = 0
+	STATS['opponent_rounds'] = 0
+	player_health_lost_this_match = 0
 	-- hearts_lost and elapsed are per tournament run, like point_total, so they
 	-- are reset when a run starts (main.lua) rather than per match
 	last_elapsed = pd.getElapsedTime()
@@ -1056,6 +1060,7 @@ end
 
 function player_hit()
 	STATS['hearts_lost'] += 1
+	player_health_lost_this_match += 1
 	play_sound('ball_hit')
 	play_sound('player_hit')
 	player_stunned = true
@@ -1352,6 +1357,9 @@ function play_match(tourament_name, opponent_num, selected_character)
 		end
 		STATS['points'] = (STATS['accuracy'] + STATS['health']) / 2 -- max score = 100
 		STATS['point_total'] += STATS['points']
+		STATS['player_rounds'] = player_rounds
+		STATS['opponent_rounds'] = opponent_rounds
+		STATS['health_lost_this_match'] = player_health_lost_this_match
 		if round_winner == 'player' then
 			play_sound('match_win')
 		else

@@ -139,6 +139,31 @@ function load_progress()
 	return saved
 end
 
+local ALL_CHARACTERS = {'bunny', 'hamster', 'bird', 'rat', 'cat', 'ferret', 'snake', 'bugs', 'tortoise'}
+
+function unlock_character(name)
+	if in_table(name, progress['characters']) then return false end
+	table.insert(progress['characters'], name)
+	new_character_unlocked = true
+	play_sound('character_unlock')
+	save_progress()
+	if name ~= 'tortoise' then
+		local all_others_unlocked = true
+		for _, character in ipairs(ALL_CHARACTERS) do
+			if character ~= 'tortoise' and not in_table(character, progress['characters']) then all_others_unlocked = false; break end
+		end
+		if all_others_unlocked then unlock_character('tortoise') end
+	end
+	return true
+end
+
+function unlock_match_rewards()
+	if STATS['health_lost_this_match'] == 0 then unlock_character('bird') end
+	if STATS['points'] >= 90 and STATS['points'] < 100 then unlock_character('ferret') end
+	if STATS['player_rounds'] == 2 and STATS['opponent_rounds'] == 0 then unlock_character('cat') end
+	if STATS['throws'] > 0 and STATS['accuracy'] == 100 then unlock_character('bugs') end
+end
+
 function save_progress()
 	if progress == nil then
 		return
@@ -563,6 +588,7 @@ function pd.update()
 	elseif string.find(scene, 'winner') then
 		winner = scene:gsub('winner_', '')
 		if winner == 'player' then
+			unlock_match_rewards()
 			scene = match_end(tournament_name, selected_character, 'WIN') -- from tournament.lua
 			if string.find(scene, 'tournament') then
 				clear_tournament_sprites() -- from tournament.lua
