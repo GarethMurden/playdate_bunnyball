@@ -72,21 +72,6 @@ local player_stunned = false
 local opponent_stunned = false
 local opponent_destination = left_of_field
 local opponent_target_ball = nil
-local opponent_debug_last_direction = nil
-local opponent_debug_last_destination = nil
-
--- Log only when a diagnostic state changes, avoiding per-frame console spam.
-function opponent_debug(event, detail)
-	print('[' .. event .. '] ' .. detail)
-	--if opponent_sprite == nil then return end
-	--print('[AI][opponent][' .. event .. '] mode=' .. tostring(current_tournament) .. ' ' .. detail .. ' pos=(' .. tostring(opponent_sprite.x) .. ',' .. tostring(opponent_sprite.y) .. ') dest=' .. tostring(opponent_destination) .. ' target=' .. tostring(opponent_target_ball) .. ' carrying=' .. tostring(opponent_carrying))
-end
-
-function opponent_debug_ball_state(index)
-	if index == nil or ball_sprites[index] == nil then return 'ball=nil' end
-	local moving = ball_movement_timers[index].value ~= ball_movement_timers[index].endValue
-	return 'ball=' .. tostring(index) .. ' xy=(' .. tostring(ball_sprites[index].x) .. ',' .. tostring(ball_sprites[index].y) .. ') moving=' .. tostring(moving) .. ' resting=' .. tostring(ball_resting_on_side(index, 'opponent')) .. ' timer=' .. tostring(ball_movement_timers[index].value)
-end
 
 local match_ended = false
 local cleanup_done = false
@@ -407,8 +392,6 @@ function initialise()
 	opponent_stunned = false
 	opponent_destination = left_of_field
 	opponent_target_ball = nil
-	opponent_debug_last_direction = nil
-	opponent_debug_last_destination = nil
 	match_ended = false
 	cleanup_done = false
 	player_step = 1
@@ -780,7 +763,6 @@ function abandon_match()
 end
 
 function opponent_act_easy()
-	opponent_debug('decision', 'easy act')
 	local destination = nil
 	if opponent_carrying then
 		opponent_move(player_sprite.x)
@@ -835,20 +817,12 @@ function opponent_throw()
 end
 
 function opponent_move(destination)
-	local direction_name = destination > opponent_sprite.x and 'right' or (destination < opponent_sprite.x and 'left' or 'arrived')
-	if direction_name ~= opponent_debug_last_direction or destination ~= opponent_debug_last_destination then
-		local selected_target = opponent_target_ball
-		opponent_debug('route-decision', 'reason=destination-or-direction-change oldDestination=' .. tostring(opponent_debug_last_destination) .. ' newDestination=' .. tostring(destination) .. ' movementDirection=' .. direction_name .. ' previousDirection=' .. tostring(opponent_debug_last_direction) .. ' targetIndex=' .. tostring(selected_target) .. ' ' .. opponent_debug_ball_state(selected_target))
-		opponent_debug_last_direction = direction_name
-		opponent_debug_last_destination = destination
-	end
 	local speed = CHARACTERS[opponent]['speed']
 	-- Clamp the final step so the opponent cannot overshoot a target and reverse
 	-- direction forever when its speed does not divide the remaining distance.
 	if math.abs(destination - opponent_sprite.x) <= speed then
 		local direction = destination >= opponent_sprite.x and -1 or 1
 		opponent_sprite:moveTo(destination, opponent_sprite.y)
-		opponent_debug('arrival', 'destination reached=' .. tostring(destination))
 		if opponent_carrying ~= nil then
 			ball_sprites[opponent_carrying]:moveTo(
 				opponent_sprite.x + (direction * CHARACTERS[opponent]['carry_position'][1]),
@@ -916,7 +890,6 @@ function opponent_pickup()
 		end -- /ball resting in the opponent's half
 	end -- /for i=1, #ball_sprites
 	if picked_up then
-		opponent_debug('pickup', 'picked ball=' .. tostring(opponent_carrying))
 		opponent_target_ball = nil
 		play_sound('ball_pickup')
 	end
@@ -931,10 +904,8 @@ function select_opponent_ball_target(balls_available)
 	if opponent_target_ball ~= nil then
 		if ball_sprites[opponent_target_ball] ~= nil
 			and ball_resting_on_side(opponent_target_ball, 'opponent') then
-			opponent_debug('target-retain', 'ball=' .. tostring(opponent_target_ball) .. ' xy=(' .. tostring(ball_sprites[opponent_target_ball].x) .. ',' .. tostring(ball_sprites[opponent_target_ball].y) .. ') resting=' .. tostring(ball_resting_on_side(opponent_target_ball, 'opponent')) .. ' timer=' .. tostring(ball_movement_timers[opponent_target_ball]))
 			return opponent_target_ball
 		end
-		opponent_debug('target-release', 'invalid or crossed ball=' .. tostring(opponent_target_ball))
 		opponent_target_ball = nil
 	end
 	local nearest_ball = nil
@@ -951,17 +922,10 @@ function select_opponent_ball_target(balls_available)
 		end
 	end
 	opponent_target_ball = nearest_ball
-	if nearest_ball ~= nil then
-		opponent_debug('target-acquire', 'ball=' .. tostring(nearest_ball) .. ' xy=(' .. tostring(ball_sprites[nearest_ball].x) .. ',' .. tostring(ball_sprites[nearest_ball].y) .. ') resting=' .. tostring(ball_resting_on_side(nearest_ball, 'opponent')) .. ' timer=' .. tostring(ball_movement_timers[nearest_ball]))
-	else
-		opponent_debug('target-none', 'no eligible loose ball')
-	end
-	opponent_debug('select_opponent_ball_target', 'nearest_ball=' .. tostring(nearest_ball) .. ', balls_available=' .. tostring(balls_available))
 	return nearest_ball
 end
 
 function opponent_act_medium()
-	opponent_debug('decision', 'medium act')
 	local balls_available = {}
 	for i=1, #ball_sprites do
 		if ball_resting_on_side(i, 'opponent') then
@@ -993,7 +957,7 @@ function opponent_act_medium()
 		if #balls_available > 0 then
 			-- print('Ball available')
 			local nearest_ball = select_opponent_ball_target(balls_available)
-			if nearest_ball == nil then opponent_debug('selector-empty', 'available count=' .. tostring(#balls_available)) return end
+			if nearest_ball == nil then return end
 			-- print('Move to nearest ball')
 			opponent_destination = ball_sprites[nearest_ball].x
 			opponent_move(opponent_destination)
@@ -1014,7 +978,6 @@ function opponent_act_medium()
 end
 
 function opponent_act_hard()
-	opponent_debug('decision', 'hard act')
 	local balls_on_left = {}
 	local balls_on_right = {}
 	for i=1, #ball_sprites do
@@ -1085,7 +1048,7 @@ function opponent_act_hard()
 		end
 		if #balls_available > 0 then
 			local nearest_ball = select_opponent_ball_target(balls_available)
-			if nearest_ball == nil then opponent_debug('selector-empty', 'available count=' .. tostring(#balls_available)) return end
+			if nearest_ball == nil then return end
 			opponent_destination = ball_sprites[nearest_ball].x
 			opponent_move(opponent_destination)
 			opponent_pickup()
