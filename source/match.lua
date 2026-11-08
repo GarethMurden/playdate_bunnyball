@@ -72,17 +72,21 @@ local player_stunned = false
 local opponent_stunned = false
 local opponent_destination = left_of_field
 local opponent_target_ball = nil
-local opponent_debug_last = {}
+local opponent_debug_last_direction = nil
+local opponent_debug_last_destination = nil
 
 -- Log only when a diagnostic state changes, avoiding per-frame console spam.
 function opponent_debug(event, detail)
 	if opponent_sprite == nil then return end
-	local key = event .. ':' .. tostring(detail)
-	if opponent_debug_last[event] ~= key then
-		opponent_debug_last[event] = key
-		print('[AI][' .. 'opponent' .. '][' .. event .. '] ' .. detail .. ' pos=(' .. tostring(opponent_sprite.x) .. ',' .. tostring(opponent_sprite.y) .. ') dest=' .. tostring(opponent_destination) .. ' target=' .. tostring(opponent_target_ball) .. ' carrying=' .. tostring(opponent_carrying))
-	end
+	print('[AI][opponent][' .. event .. '] mode=' .. tostring(current_tournament) .. ' ' .. detail .. ' pos=(' .. tostring(opponent_sprite.x) .. ',' .. tostring(opponent_sprite.y) .. ') dest=' .. tostring(opponent_destination) .. ' target=' .. tostring(opponent_target_ball) .. ' carrying=' .. tostring(opponent_carrying))
 end
+
+function opponent_debug_ball_state(index)
+	if index == nil or ball_sprites[index] == nil then return 'ball=nil' end
+	local moving = ball_movement_timers[index].value ~= ball_movement_timers[index].endValue
+	return 'ball=' .. tostring(index) .. ' xy=(' .. tostring(ball_sprites[index].x) .. ',' .. tostring(ball_sprites[index].y) .. ') moving=' .. tostring(moving) .. ' resting=' .. tostring(ball_resting_on_side(index, 'opponent')) .. ' timer=' .. tostring(ball_movement_timers[index].value)
+end
+
 local match_ended = false
 local cleanup_done = false
 local player_step = 1
@@ -401,6 +405,9 @@ function initialise()
 	player_stunned = false
 	opponent_stunned = false
 	opponent_destination = left_of_field
+	opponent_target_ball = nil
+	opponent_debug_last_direction = nil
+	opponent_debug_last_destination = nil
 	match_ended = false
 	cleanup_done = false
 	player_step = 1
@@ -829,7 +836,12 @@ end
 
 function opponent_move(destination)
 	local direction_name = destination > opponent_sprite.x and 'right' or (destination < opponent_sprite.x and 'left' or 'arrived')
-	opponent_debug('move', 'direction=' .. direction_name .. ' step=' .. tostring(CHARACTERS[opponent]['speed']) .. ' destination=' .. tostring(destination))
+	if direction_name ~= opponent_debug_last_direction or destination ~= opponent_debug_last_destination then
+		local selected_target = opponent_target_ball
+		opponent_debug('route-decision', 'reason=destination-or-direction-change oldDestination=' .. tostring(opponent_debug_last_destination) .. ' newDestination=' .. tostring(destination) .. ' movementDirection=' .. direction_name .. ' previousDirection=' .. tostring(opponent_debug_last_direction) .. ' targetIndex=' .. tostring(selected_target) .. ' ' .. opponent_debug_ball_state(selected_target))
+		opponent_debug_last_direction = direction_name
+		opponent_debug_last_destination = destination
+	end
 	local speed = CHARACTERS[opponent]['speed']
 	-- Clamp the final step so the opponent cannot overshoot a target and reverse
 	-- direction forever when its speed does not divide the remaining distance.
