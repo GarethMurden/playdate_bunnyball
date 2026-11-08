@@ -30,12 +30,6 @@ local CHARGE_MAX_SECONDS = 1.0
 -- a throw with no charge takes this much longer than a full-charge throw:
 -- 0.5 means a tap is 1.5x the full-charge time, so it still crosses the field
 local CHARGE_SLOWEST_FACTOR = 0.5
--- how far short of the opponent's line the ball can be aimed, in pixels.
--- The throw travels from the player's shoulder (y 141) to the opponent's line
--- (y 95), so 30 is the far end of the opponent's half.
-local AIM_MAX_OFFSET = 30
--- one press of up/down moves the aim by this much, giving three settings
-local AIM_STEP = 15
 
 -- B dash: a short burst of speed in the direction the player is facing
 local DASH_SPEED_MULTIPLIER = 3
@@ -78,10 +72,9 @@ local cleanup_done = false
 local player_step = 1
 local opponent_step = 1
 
--- throw charge and aim, set while A is held with a ball
+-- throw charge, set while A is held with a ball
 local player_charging = false
 local player_charge = 0
-local player_aim = 0
 local player_dash_time = 0
 local player_dash_cooldown = 0
 
@@ -102,7 +95,6 @@ local charge_sprite = nil
 -- the meter is only redrawn when one of these changes, so holding A does not
 -- rebuild the image every frame
 local charge_bar_shown = nil
-local charge_aim_shown = nil
 local background_sprite = nil
 local pitch_sprite = nil
 local opponent_sprite = nil
@@ -156,8 +148,7 @@ function schedule_match_timer(delay, callback, ...)
 end
 
 -- a ball can be picked up by a side once it has come to rest in that side's
--- half. Aimed throws land short of the opponent's line, so "at the line" is
--- not enough to decide who can reach a ball.
+-- half, so "at the line" is not enough to decide who can reach a ball.
 function ball_resting_on_side(i, side)
 	if ball_movement_timers[i].value ~= ball_movement_timers[i].endValue then
 		return false
@@ -296,7 +287,6 @@ function match_loop(delta)
 			if player_carrying then
 				player_charging = true
 				player_charge = 0
-				player_aim = 0
 			end
 		end
 		if player_charging then
@@ -307,20 +297,8 @@ function match_loop(delta)
 				if player_charge > CHARGE_MAX_SECONDS then
 					player_charge = CHARGE_MAX_SECONDS
 				end
-				-- up aims deeper, down aims shorter
-				if pd.buttonJustPressed(pd.kButtonUp) then
-					player_aim -= AIM_STEP
-					if player_aim < 0 then
-						player_aim = 0
-					end
-				elseif pd.buttonJustPressed(pd.kButtonDown) then
-					player_aim += AIM_STEP
-					if player_aim > AIM_MAX_OFFSET then
-						player_aim = AIM_MAX_OFFSET
-					end
-				end
 			else
-				player_throw(player_carrying, player_charge, player_aim)
+				player_throw(player_carrying, player_charge)
 				player_carrying = nil
 				player_charging = false
 			end
@@ -399,7 +377,6 @@ function initialise()
 
 	player_charging = false
 	player_charge = 0
-	player_aim = 0
 	player_dash_time = 0
 	player_dash_cooldown = 0
 
@@ -413,7 +390,6 @@ function initialise()
 	hud_sprite = nil
 	charge_sprite = nil
 	charge_bar_shown = nil
-	charge_aim_shown = nil
 	background_sprite = nil
 	pitch_sprite = nil
 	opponent_sprite = nil
@@ -609,7 +585,7 @@ function build_hud()
 	hud_sprite:add()
 end
 
--- power meter and aim, drawn while A is held with a ball. Reuses the stat
+-- power meter, drawn while A is held with a ball. Reuses the stat
 -- bars as a 7-step meter and the small font for the label, on a white panel
 -- so it reads over any of the three pitch backgrounds.
 function update_charge_hud()
@@ -619,7 +595,6 @@ function update_charge_hud()
 			charge_sprite = nil
 		end
 		charge_bar_shown = nil
-		charge_aim_shown = nil
 		return
 	end
 
@@ -629,16 +604,13 @@ function update_charge_hud()
 	end
 	-- 0 to 6, then shifted to the table's 1-based index
 	local bar_index = math.floor((charge_ratio * 6) + 0.5) + 1
-	local aim_level = math.floor((player_aim / AIM_STEP) + 0.5)
 
 	if charge_sprite ~= nil
 		and charge_bar_shown == bar_index
-		and charge_aim_shown == aim_level
 	then
 		return
 	end
 	charge_bar_shown = bar_index
-	charge_aim_shown = aim_level
 
 	if charge_sprite == nil then
 		charge_sprite = gfx.sprite.new()
@@ -651,19 +623,8 @@ function update_charge_hud()
 	gfx.fillRect(0, 0, 170, 26)
 	power_bars[bar_index]:draw(2, 5)
 
-	-- aim: three notches, the filled one is where the ball will land.
-	-- top is deep (the opponent's line), bottom is short.
-	gfx.setColor(gfx.kColorBlack)
-	for i=0, 2 do
-		local y = 4 + (i * 7)
-		if i == aim_level then
-			gfx.fillRect(104, y, 8, 5)
-		else
-			gfx.drawRect(104, y, 8, 5)
-		end
-	end
 	gfx.setFont(small_font)
-	gfx.drawText('AIM', 116, 6)
+	gfx.drawText('PWR', 116, 6)
 	gfx.popContext()
 
 	charge_sprite:setImage(meter_image)
@@ -690,7 +651,6 @@ function start_next_round()
 	opponent_step = 1
 	player_charging = false
 	player_charge = 0
-	player_aim = 0
 	player_dash_time = 0
 	player_dash_cooldown = 0
 	if charge_sprite ~= nil then
@@ -698,7 +658,6 @@ function start_next_round()
 		charge_sprite = nil
 	end
 	charge_bar_shown = nil
-	charge_aim_shown = nil
 
 	-- tournament 3 rule: no healing between rounds. The side that won the round
 	-- keeps the hearts it has left, so damage carries forward. The side that
@@ -1244,13 +1203,12 @@ function player_release_stun()
 	schedule_match_timer(1500, player_enable_collisions)
 end
 
--- charge is seconds of held A, aim is pixels short of the opponent's line
-function player_throw(carrying, charge, aim)
+-- charge is seconds of held A
+function player_throw(carrying, charge)
 	STATS['throws'] += 1
 	ball_in_play[carrying] = true
 
 	charge = charge or 0
-	aim = aim or 0
 	local charge_ratio = charge / CHARGE_MAX_SECONDS
 	if charge_ratio > 1 then
 		charge_ratio = 1
@@ -1264,7 +1222,7 @@ function player_throw(carrying, charge, aim)
 	ball_movement_timers[carrying] = pd.timer.new(
 		duration,					-- duration
 		player_sprite.y - (player_sprite.height - CHARACTERS[player]['hitbox'][2]),	-- start
-		top_of_field + aim,			-- end
+		top_of_field,			-- end
 		pd.easingFunctions.outBack 	-- easing function
 	)
 
@@ -1369,7 +1327,6 @@ function play_match(tourament_name, opponent_num, selected_character)
 			charge_sprite = nil
 		end
 		charge_bar_shown = nil
-		charge_aim_shown = nil
 		countdown('STOP!')
 		for i=1, #ball_sprites do
 			ball_sprites[i]:remove()
