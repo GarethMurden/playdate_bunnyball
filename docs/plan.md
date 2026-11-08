@@ -112,12 +112,7 @@ handling was added anywhere.
   speed; a tap is 1.5x slower (`CHARGE_SLOWEST_FACTOR` 0.5), still enough to cross the
   field.
   The AI keeps its fixed `6000 / strength` throw.
-- **Aim.** While charging, Up/Down moves the throw's landing point in 15px steps from the
-  opponent's line (`top_of_field`, 95) up to `AIM_MAX_OFFSET` (30) short of it, i.e. three
-  settings: full field, mid, short. The ball's end y is `top_of_field + aim`.
-- **Power meter and aim on the HUD.** A 170x26 white panel at (100, 215) holding the
-  existing `assets/bar/0`–`bar/6` stat bars as a 7-step power meter, plus three aim
-  notches (filled = selected) and the small font's `AIM` label. No new art.
+- **Power meter on the HUD.** A 170x26 white panel at (100, 215) holding the existing `assets/bar/0`�`bar/6` stat bars as a 7-step meter with the small-font `PWR` label. No new art.
 - **B = dash.** B while holding Left or Right gives `DASH_SPEED_MULTIPLIER` (3x) speed for
   `DASH_SECONDS` (0.15s), then a `DASH_COOLDOWN_SECONDS` (0.6s) cooldown. Reuses the
   existing run frames. B in a match is only the dash; the pause overlay's B-to-resume and
@@ -136,12 +131,6 @@ Design decisions taken here:
 - Charge curve is linear in time, and the throw time is linear in charge. A full charge
   reproduces the pre-Phase-3 throw exactly, so the feel of a fully charged throw is the
   old throw.
-- Aim is a landing-point offset rather than a lob height: the ball still travels in a
-  straight line along y, it just stops short. That needed one supporting change — a ball
-  is now "reachable" by a side when it has come to rest anywhere in that side's half
-  (`ball_resting_on_side`), not only when it sits on the line at y 95 or 185. Without it
-  an aimed ball would be unreachable by either side. The AI's ball scans use the same
-  helper, so it chases aimed balls too.
 - The dash is a speed multiplier on the existing movement, not a separate move, so it
   cannot leave the field bounds or desync the carried ball.
 - Sound is wired in at the existing call sites only; no game logic was changed to make
