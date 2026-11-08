@@ -77,8 +77,9 @@ local opponent_debug_last_destination = nil
 
 -- Log only when a diagnostic state changes, avoiding per-frame console spam.
 function opponent_debug(event, detail)
-	if opponent_sprite == nil then return end
-	print('[AI][opponent][' .. event .. '] mode=' .. tostring(current_tournament) .. ' ' .. detail .. ' pos=(' .. tostring(opponent_sprite.x) .. ',' .. tostring(opponent_sprite.y) .. ') dest=' .. tostring(opponent_destination) .. ' target=' .. tostring(opponent_target_ball) .. ' carrying=' .. tostring(opponent_carrying))
+	print('[' .. event .. '] ' .. detail)
+	--if opponent_sprite == nil then return end
+	--print('[AI][opponent][' .. event .. '] mode=' .. tostring(current_tournament) .. ' ' .. detail .. ' pos=(' .. tostring(opponent_sprite.x) .. ',' .. tostring(opponent_sprite.y) .. ') dest=' .. tostring(opponent_destination) .. ' target=' .. tostring(opponent_target_ball) .. ' carrying=' .. tostring(opponent_carrying))
 end
 
 function opponent_debug_ball_state(index)
@@ -797,14 +798,13 @@ function opponent_act_easy()
 						ball_sprites[nearest_ball].x,
 						opponent_sprite.x 
 					)
-					if ball_distance < nearest_ball_distance then
+					--[[if ball_distance < nearest_ball_distance then
 						nearest_ball_distance = ball_distance
 						nearest_ball = i
-					end
+					end]]
 				end
 			end
 		end -- /for
-		if nearest_ball ~= nil then opponent_debug('easy-target', 'ball=' .. tostring(nearest_ball) .. ' xy=(' .. tostring(ball_sprites[nearest_ball].x) .. ',' .. tostring(ball_sprites[nearest_ball].y) .. ') resting=' .. tostring(ball_resting_on_side(nearest_ball, 'opponent')) .. ' timer=' .. tostring(ball_movement_timers[nearest_ball])) end
 		if nearest_ball == nil then
 			if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
 				opponent_destination = math.random(right_of_field)
@@ -956,6 +956,7 @@ function select_opponent_ball_target(balls_available)
 	else
 		opponent_debug('target-none', 'no eligible loose ball')
 	end
+	opponent_debug('select_opponent_ball_target', 'nearest_ball=' .. tostring(nearest_ball) .. ', balls_available=' .. tostring(balls_available))
 	return nearest_ball
 end
 
