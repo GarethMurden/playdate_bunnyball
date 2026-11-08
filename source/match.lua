@@ -71,6 +71,8 @@ local player_health = nil
 local player_stunned = false
 local opponent_stunned = false
 local opponent_destination = left_of_field
+local opponent_target_ball = nil
+
 local match_ended = false
 local cleanup_done = false
 local player_step = 1
@@ -389,6 +391,7 @@ function initialise()
 	player_stunned = false
 	opponent_stunned = false
 	opponent_destination = left_of_field
+	opponent_target_ball = nil
 	match_ended = false
 	cleanup_done = false
 	player_step = 1
@@ -777,10 +780,10 @@ function opponent_act_easy()
 						ball_sprites[nearest_ball].x,
 						opponent_sprite.x 
 					)
-					if ball_distance < nearest_ball_distance then
+					--[[if ball_distance < nearest_ball_distance then
 						nearest_ball_distance = ball_distance
 						nearest_ball = i
-					end
+					end]]
 				end
 			end
 		end -- /for
@@ -887,8 +890,39 @@ function opponent_pickup()
 		end -- /ball resting in the opponent's half
 	end -- /for i=1, #ball_sprites
 	if picked_up then
+		opponent_target_ball = nil
 		play_sound('ball_pickup')
 	end
+end
+
+-- Keep a loose-ball target while it remains available. Recomputing the nearest
+-- ball every frame can switch targets at their midpoint and make the CPU vibrate.
+function select_opponent_ball_target(balls_available)
+	-- A target remains locked while it exists and is still resting in the
+	-- opponent's half, even if it is no longer in this frame's candidate list.
+	-- Pickup, side-crossing/movement, or removal releases the lock.
+	if opponent_target_ball ~= nil then
+		if ball_sprites[opponent_target_ball] ~= nil
+			and ball_resting_on_side(opponent_target_ball, 'opponent') then
+			return opponent_target_ball
+		end
+		opponent_target_ball = nil
+	end
+	local nearest_ball = nil
+	local nearest_ball_distance = math.huge
+	for i=1, #balls_available do
+		local ball_index = balls_available[i]
+		if ball_sprites[ball_index] ~= nil
+			and ball_resting_on_side(ball_index, 'opponent') then
+			local ball_distance = distance(ball_sprites[ball_index].x, opponent_sprite.x)
+			if ball_distance < nearest_ball_distance then
+				nearest_ball_distance = ball_distance
+				nearest_ball = ball_index
+			end
+		end
+	end
+	opponent_target_ball = nearest_ball
+	return nearest_ball
 end
 
 function opponent_act_medium()
@@ -922,20 +956,14 @@ function opponent_act_medium()
 		-- print('Not carrying')
 		if #balls_available > 0 then
 			-- print('Ball available')
-			local nearest_ball = balls_available[1]
-			local nearest_ball_distance = 800
-			for i=1, #balls_available do
-				local ball_distance = distance(ball_sprites[balls_available[i]].x, opponent_sprite.x)
-				if ball_distance < nearest_ball_distance then
-					nearest_ball_distance = ball_distance
-					nearest_ball = balls_available[i]
-				end
-			end
+			local nearest_ball = select_opponent_ball_target(balls_available)
+			if nearest_ball == nil then return end
 			-- print('Move to nearest ball')
 			opponent_destination = ball_sprites[nearest_ball].x
 			opponent_move(opponent_destination)
 			opponent_pickup()
 		else
+			select_opponent_ball_target(balls_available)
 			-- print('No ball available')
 			-- print('Move at random')
 			if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
@@ -1019,19 +1047,13 @@ function opponent_act_hard()
 			balls_available = balls_on_right
 		end
 		if #balls_available > 0 then
-			local nearest_ball = balls_available[1]
-			local nearest_ball_distance = 800
-			for i=1, #balls_available do
-				local ball_distance = distance(ball_sprites[balls_available[i]].x, opponent_sprite.x)
-				if ball_distance < nearest_ball_distance then
-					nearest_ball_distance = ball_distance
-					nearest_ball = balls_available[i]
-				end
-			end
+			local nearest_ball = select_opponent_ball_target(balls_available)
+			if nearest_ball == nil then return end
 			opponent_destination = ball_sprites[nearest_ball].x
 			opponent_move(opponent_destination)
 			opponent_pickup()
 		else
+			select_opponent_ball_target(balls_available)
 			-- no ball to chase, so wander like the other difficulties do
 			if distance(opponent_destination, opponent_sprite.x) < CHARACTERS[opponent]['speed'] then
 				opponent_destination = math.random(right_of_field)

@@ -163,6 +163,7 @@ function main_menu()
 		)
 
 		gfx.setFont(small_white_font)
+		print('version = ' .. version)
 		local text = '2026                    PangolinPaw                    v' .. version
 		local text_width, _ = gfx.getTextSize(text)
 		gfx.drawText(
