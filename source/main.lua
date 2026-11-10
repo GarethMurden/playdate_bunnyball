@@ -63,8 +63,8 @@ local progress = nil
 	},
 	run = {tournament = 'house', opponent = 2, character = 'bunny'}
 }--]]
+local new_unlock_notifications = {}
 local new_tournament_unlocked = false
-local new_character_unlocked = false
 
 local scene = nil
 local tournament_name = nil
@@ -145,7 +145,7 @@ local ALL_CHARACTERS = {'bunny', 'hamster', 'bird', 'rat', 'cat', 'ferret', 'sna
 function unlock_character(name)
 	if in_table(name, progress['characters']) then return false end
 	table.insert(progress['characters'], name)
-	new_character_unlocked = true
+	table.insert(new_unlock_notifications, CHARACTERS[name]['name'] .. ' unlocked!')
 	play_sound('character_unlock')
 	save_progress()
 	if name ~= 'tortoise' then
@@ -555,13 +555,15 @@ function pd.update()
 		end
 
 	elseif string.find(scene, 'finished') then
-		if progress['tournament'] == 1 and new_tournament_unlocked ~= true then
+		if progress['tournament'] == 1 and not new_tournament_unlocked then
 			progress['tournament'] = 2
 			new_tournament_unlocked = true
+			table.insert(new_unlock_notifications, 'Garden tournament unlocked!')
 			save_progress()
-		elseif progress['tournament'] == 2 and new_tournament_unlocked ~= true then
+		elseif progress['tournament'] == 2 and not new_tournament_unlocked then
 			progress['tournament'] = 3
 			new_tournament_unlocked = true
+			table.insert(new_unlock_notifications, 'Park tournament unlocked!')
 			save_progress()
 		end
 		-- beating a tournament unlocks that tournament's first opponent
@@ -569,14 +571,15 @@ function pd.update()
 		local unlock = TOURNAMENT_MATCHES[location][1]
 		if not in_table(unlock, progress['characters']) then
 			table.insert(progress['characters'], unlock)
-			new_character_unlocked = true
+			table.insert(new_unlock_notifications, CHARACTERS[unlock]['name'] .. ' unlocked!')
 			play_sound('character_unlock')
 			save_progress()
 		end
-		scene = tournament_end(tournament_name, selected_character, new_tournament_unlocked, new_character_unlocked)
+		scene = tournament_end(tournament_name, selected_character, new_unlock_notifications)
 		if scene == 'main_menu' then
 			save_score()
 			clear_run()
+			new_unlock_notifications = {}
 		end
 
 	elseif string.find(scene, 'tournament') then
@@ -588,7 +591,6 @@ function pd.update()
 	elseif string.find(scene, 'match') then
 		change_music('assets/music/theme', true)
 		new_tournament_unlocked = false
-		new_character_unlocked = false
 		scene = play_match(nil, nil, selected_character) -- from match.lua
 
 	elseif string.find(scene, 'winner') then

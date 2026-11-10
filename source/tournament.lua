@@ -18,6 +18,9 @@ local a_button_sprite = nil
 local banner_sprite = nil
 local podium_sprite = nil
 local unlock_notification_sprite = nil
+local unlock_notification_queue = {}
+local unlock_notification_timers = {}
+local notification_active = false
 local player_sprite = gfx.sprite.new(CHARACTERS['bunny']['assets']['idle_cpu'])
 local opponent_sprites = {
 	gfx.sprite.new(CHARACTERS['bunny']['assets']['idle_cpu']),
@@ -26,6 +29,12 @@ local opponent_sprites = {
 
 function clear_tournament_sprites()
 	arrow_down:remove()
+	for i=1, #unlock_notification_timers do
+		unlock_notification_timers[i]:remove()
+	end
+	unlock_notification_timers = {}
+	notification_active = false
+	unlock_notification_queue = {}
 	-- Tournament intro
 	if splash_screen_sprite ~= nil then
 		splash_screen_sprite:remove()
@@ -47,7 +56,7 @@ function clear_tournament_sprites()
 	end
 
 	-- Tournament end
-	if banner_sprite ~= nill then
+	if banner_sprite ~= nil then
 		banner_sprite:remove()
 		banner_sprite = nil
 		podium_sprite:remove()
@@ -198,7 +207,54 @@ function show_rating()
 	gfx.popContext()
 end
 
-function tournament_end(tournament_name, selected_character, tournament_unlock, character_unlocked)
+local function create_unlock_notification(message)
+	local image = gfx.image.new('assets/notification/side')
+	gfx.pushContext(image)
+	gfx.setFont(small_font)
+	local text_width, text_height = gfx.getTextSize(message)
+	gfx.drawText(message, math.floor(282 - text_width / 2), math.floor(120 - text_height / 2))
+	gfx.popContext()
+
+	unlock_notification_sprite = gfx.sprite.new(image)
+	unlock_notification_sprite:moveTo(200, -120)
+	unlock_notification_sprite:setZIndex(1000)
+	unlock_notification_sprite:add()
+	local slide_in = pd.timer.new(300, -120, 120)
+	table.insert(unlock_notification_timers, slide_in)
+	slide_in.updateCallback = function(timer)
+		if unlock_notification_sprite ~= nil then
+			unlock_notification_sprite:moveTo(200, timer.value)
+		end
+	end
+	slide_in.timerEndedCallback = function()
+		local hold = pd.timer.performAfterDelay(1000, function()
+			if unlock_notification_sprite == nil then return end
+			local slide_out = pd.timer.new(300, 120, -120)
+			table.insert(unlock_notification_timers, slide_out)
+			slide_out.updateCallback = function(timer)
+				if unlock_notification_sprite ~= nil then
+					unlock_notification_sprite:moveTo(200, timer.value)
+				end
+			end
+			slide_out.timerEndedCallback = function()
+				unlock_notification_sprite:remove()
+				unlock_notification_sprite = nil
+				local gap = pd.timer.performAfterDelay(500, function()
+					if #unlock_notification_queue > 0 then
+						local next_message = table.remove(unlock_notification_queue, 1)
+						create_unlock_notification(next_message)
+					else
+						notification_active = false
+					end
+				end)
+				table.insert(unlock_notification_timers, gap)
+			end
+		end)
+		table.insert(unlock_notification_timers, hold)
+	end
+end
+
+function tournament_end(tournament_name, selected_character, unlock_notifications)
 	local location = tournament_name:gsub('tournament_', '')
 	if splash_screen_sprite == nil then
 		local splash_screen_image = gfx.image.new('assets/backgrounds/pitch_' .. location)
@@ -250,35 +306,13 @@ function tournament_end(tournament_name, selected_character, tournament_unlock, 
 		player_sprite:moveTo(200, 64)
 		player_sprite:add()
 
-		if tournament_unlock or character_unlocked then
-			local notification_image = gfx.image.new('assets/tournament_end/unlock_notification')
-			gfx.pushContext(notification_image)
-			gfx.setFont(small_font)
-			-- both can happen on the same win, so the box can carry two lines
-			local lines = {}
-			if tournament_unlock then
-				table.insert(lines, 'TOURNAMENT UNLOCKED')
+		if unlock_notifications ~= nil and #unlock_notifications > 0 and not notification_active then
+			for i=1, #unlock_notifications do
+				table.insert(unlock_notification_queue, unlock_notifications[i])
 			end
-			if character_unlocked then
-				table.insert(lines, 'ANIMAL UNLOCKED')
-			end
-			local line_height = 12
-			local first_y = math.floor(25 - ((#lines - 1) * line_height / 2))
-			for i=1, #lines do
-				local text_width, text_height = gfx.getTextSize(lines[i])
-				gfx.drawText(
-					lines[i],
-					math.floor(266 - (text_width / 2)),
-					math.floor(first_y + ((i - 1) * line_height) - (text_height / 2))
-				)
-			end
-			unlock_notification_sprite = gfx.sprite.new(notification_image)
-			unlock_notification_sprite:moveTo(
-				math.floor( pd.display.getWidth() / 2),
-				math.floor( pd.display.getHeight() / 2)
-			)
-			unlock_notification_sprite:add()
-			gfx.popContext()
+			local first_message = table.remove(unlock_notification_queue, 1)
+			notification_active = true
+			create_unlock_notification(first_message)
 		end
 
 	end
