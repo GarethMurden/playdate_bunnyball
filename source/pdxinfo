@@ -2,5 +2,5 @@ name=Bunnyball
 author=Gareth Murden
 description=A one-on-one ball game for the Playdate. Grab a ball, dodge, and throw it at your opponent until their hearts run out.
 bundleID=com.garethmurden.bunnyball
-version=0.4.29
+version=0.4.30
 buildNumber=1
