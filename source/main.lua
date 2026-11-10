@@ -19,6 +19,7 @@ STATS = {
 	health = 0,
 	points = 0,
 	point_total = 0,
+	opponent_points = {},
 	hearts_lost = 0,
 	elapsed = 0
 }
@@ -189,6 +190,7 @@ function save_run()
 		character = selected_character,
 		-- the run's score so far, so a resumed run keeps its totals
 		point_total = STATS['point_total'],
+		opponent_points = STATS['opponent_points'],
 		hearts_lost = STATS['hearts_lost'],
 		elapsed = STATS['elapsed']
 	}
@@ -518,6 +520,7 @@ function pd.update()
 			opponent_no = run['opponent']
 			selected_character = run['character']
 			STATS['point_total'] = run['point_total'] or 0
+			STATS['opponent_points'] = run['opponent_points'] or {}
 			STATS['hearts_lost'] = run['hearts_lost'] or 0
 			STATS['elapsed'] = run['elapsed'] or 0
 			run_active = true
@@ -548,6 +551,7 @@ function pd.update()
 			-- a tournament run starts here, so reset its per-run state
 			opponent_no = 1
 			STATS['point_total'] = 0
+			STATS['opponent_points'] = {}
 			STATS['hearts_lost'] = 0
 			STATS['elapsed'] = 0
 			run_active = true
@@ -595,6 +599,7 @@ function pd.update()
 
 	elseif string.find(scene, 'winner') then
 		winner = scene:gsub('winner_', '')
+		STATS['opponent_points'][opponent_no] = STATS['points']
 		if winner == 'player' then
 			change_music('assets/music/win', false)
 			unlock_match_rewards()

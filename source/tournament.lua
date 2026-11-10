@@ -18,6 +18,7 @@ local a_button_sprite = nil
 local banner_sprite = nil
 local podium_sprite = nil
 local unlock_notification_sprite = nil
+local opponent_score_sprite = nil
 local unlock_notification_queue = {}
 local unlock_notification_timers = {}
 local notification_active = false
@@ -64,6 +65,10 @@ function clear_tournament_sprites()
 		player_sprite:remove()
 		for i=1, #opponent_sprites do
 			opponent_sprites[i]:remove()
+		end
+		if opponent_score_sprite ~= nil then
+			opponent_score_sprite:remove()
+			opponent_score_sprite = nil
 		end
 		if unlock_notification_sprite ~= nil then
 			unlock_notification_sprite:remove()
@@ -207,7 +212,72 @@ function show_rating()
 	gfx.popContext()
 end
 
-local function create_unlock_notification(message)
+local create_unlock_notification
+
+local function start_next_unlock_notification()
+	if #unlock_notification_queue > 0 then
+		local next_message = table.remove(unlock_notification_queue, 1)
+		create_unlock_notification(next_message)
+	else
+		notification_active = false
+	end
+end
+
+local function create_opponent_score_notification(location)
+	local opponents = TOURNAMENT_MATCHES[location]
+	local image = gfx.image.new('assets/notification/side')
+	gfx.pushContext(image)
+	gfx.setFont(medium_font)
+	for i=1, #opponents do
+		local animal = opponents[i]
+		local row = i
+		local y = 45 + (row - 1) * 50
+		gfx.image.new('assets/animals/' .. animal .. '_icon'):draw(176, y - 15)
+		local score = math.floor((STATS['opponent_points'] or {})[row] or 0)
+		local text = tostring(score)
+		local width, height = gfx.getTextSize(text)
+		gfx.drawText(text, math.floor(300 - width / 2), math.floor(y - height / 2))
+	end
+	gfx.drawLine(176, 174, 388, 174)
+	gfx.drawLine(176, 180, 388, 180)
+	local total = tostring(math.floor(STATS['point_total'] or 0))
+	local total_width, total_height = gfx.getTextSize(total)
+	gfx.drawText(total, math.floor(300 - total_width / 2), math.floor(202 - total_height / 2))
+	gfx.popContext()
+
+	opponent_score_sprite = gfx.sprite.new(image)
+	opponent_score_sprite:moveTo(200, -120)
+	opponent_score_sprite:setZIndex(1000)
+	opponent_score_sprite:add()
+	local slide_in = pd.timer.new(300, -120, 120)
+	table.insert(unlock_notification_timers, slide_in)
+	slide_in.updateCallback = function(timer)
+		if opponent_score_sprite ~= nil then
+			opponent_score_sprite:moveTo(200, timer.value)
+		end
+	end
+	slide_in.timerEndedCallback = function()
+		local hold = pd.timer.performAfterDelay(1800, function()
+			if opponent_score_sprite == nil then return end
+			local slide_out = pd.timer.new(300, 120, -120)
+			table.insert(unlock_notification_timers, slide_out)
+			slide_out.updateCallback = function(timer)
+				if opponent_score_sprite ~= nil then
+					opponent_score_sprite:moveTo(200, timer.value)
+				end
+			end
+			slide_out.timerEndedCallback = function()
+				opponent_score_sprite:remove()
+				opponent_score_sprite = nil
+				local gap = pd.timer.performAfterDelay(250, start_next_unlock_notification)
+				table.insert(unlock_notification_timers, gap)
+			end
+		end)
+		table.insert(unlock_notification_timers, hold)
+	end
+end
+
+create_unlock_notification = function(message)
 	local image = gfx.image.new('assets/notification/side')
 	gfx.pushContext(image)
 	gfx.setFont(small_font)
@@ -306,13 +376,14 @@ function tournament_end(tournament_name, selected_character, unlock_notification
 		player_sprite:moveTo(200, 64)
 		player_sprite:add()
 
-		if unlock_notifications ~= nil and #unlock_notifications > 0 and not notification_active then
+		if unlock_notifications ~= nil then
 			for i=1, #unlock_notifications do
 				table.insert(unlock_notification_queue, unlock_notifications[i])
 			end
-			local first_message = table.remove(unlock_notification_queue, 1)
+		end
+		if not notification_active then
 			notification_active = true
-			create_unlock_notification(first_message)
+			create_opponent_score_notification(location)
 		end
 
 	end
