@@ -146,7 +146,7 @@ local ALL_CHARACTERS = {'bunny', 'hamster', 'bird', 'rat', 'cat', 'ferret', 'sna
 function unlock_character(name)
 	if in_table(name, progress['characters']) then return false end
 	table.insert(progress['characters'], name)
-	table.insert(new_unlock_notifications, CHARACTERS[name]['name'] .. ' unlocked!')
+	table.insert(new_unlock_notifications, name .. ' unlocked!')
 	play_sound('character_unlock')
 	save_progress()
 	if name ~= 'tortoise' then
@@ -207,9 +207,9 @@ function clear_run()
 end
 
 function draw_clear_save_prompt()
-	gfx.setColor(gfx.kColorBlack)
-	gfx.fillRect(40, 80, 320, 80)
 	gfx.setColor(gfx.kColorWhite)
+	gfx.fillRect(40, 80, 320, 80)
+	gfx.setColor(gfx.kColorBlack)
 
 	local text = 'clear all progress?'
 	local text_width, _ = gfx.getTextSize(text)
@@ -562,12 +562,12 @@ function pd.update()
 		if progress['tournament'] == 1 and not new_tournament_unlocked then
 			progress['tournament'] = 2
 			new_tournament_unlocked = true
-			table.insert(new_unlock_notifications, 'Garden tournament unlocked!')
+			table.insert(new_unlock_notifications, 'Garden unlocked!')
 			save_progress()
 		elseif progress['tournament'] == 2 and not new_tournament_unlocked then
 			progress['tournament'] = 3
 			new_tournament_unlocked = true
-			table.insert(new_unlock_notifications, 'Park tournament unlocked!')
+			table.insert(new_unlock_notifications, 'Park unlocked!')
 			save_progress()
 		end
 		-- beating a tournament unlocks that tournament's first opponent
@@ -575,7 +575,7 @@ function pd.update()
 		local unlock = TOURNAMENT_MATCHES[location][1]
 		if not in_table(unlock, progress['characters']) then
 			table.insert(progress['characters'], unlock)
-			table.insert(new_unlock_notifications, CHARACTERS[unlock]['name'] .. ' unlocked!')
+			table.insert(new_unlock_notifications, unlock .. ' unlocked!')
 			play_sound('character_unlock')
 			save_progress()
 		end

@@ -246,24 +246,24 @@ local function create_opponent_score_notification(location)
 	gfx.popContext()
 
 	opponent_score_sprite = gfx.sprite.new(image)
-	opponent_score_sprite:moveTo(200, -120)
+	opponent_score_sprite:moveTo(520, 120)
 	opponent_score_sprite:setZIndex(1000)
 	opponent_score_sprite:add()
-	local slide_in = pd.timer.new(300, -120, 120)
+	local slide_in = pd.timer.new(300, 520, 200, pd.easingFunctions.inOutCubic)
 	table.insert(unlock_notification_timers, slide_in)
 	slide_in.updateCallback = function(timer)
 		if opponent_score_sprite ~= nil then
-			opponent_score_sprite:moveTo(200, timer.value)
+			opponent_score_sprite:moveTo(timer.value, 120)
 		end
 	end
 	slide_in.timerEndedCallback = function()
-		local hold = pd.timer.performAfterDelay(1800, function()
+		local hold = pd.timer.performAfterDelay(3800, function()
 			if opponent_score_sprite == nil then return end
-			local slide_out = pd.timer.new(300, 120, -120)
+			local slide_out = pd.timer.new(300, 200, 520, pd.easingFunctions.inOutCubic)
 			table.insert(unlock_notification_timers, slide_out)
 			slide_out.updateCallback = function(timer)
 				if opponent_score_sprite ~= nil then
-					opponent_score_sprite:moveTo(200, timer.value)
+					opponent_score_sprite:moveTo(timer.value, 120)
 				end
 			end
 			slide_out.timerEndedCallback = function()
@@ -278,18 +278,18 @@ local function create_opponent_score_notification(location)
 end
 
 create_unlock_notification = function(message)
-	local image = gfx.image.new('assets/notification/side')
+	local image = gfx.image.new('assets/notification/top')
 	gfx.pushContext(image)
 	gfx.setFont(small_font)
 	local text_width, text_height = gfx.getTextSize(message)
-	gfx.drawText(message, math.floor(282 - text_width / 2), math.floor(120 - text_height / 2))
+	gfx.drawText(message, math.floor(282.5 - text_width / 2), math.floor(37.5 - text_height / 2))
 	gfx.popContext()
 
 	unlock_notification_sprite = gfx.sprite.new(image)
 	unlock_notification_sprite:moveTo(200, -120)
 	unlock_notification_sprite:setZIndex(1000)
 	unlock_notification_sprite:add()
-	local slide_in = pd.timer.new(300, -120, 120)
+	local slide_in = pd.timer.new(300, -120, 120, pd.easingFunctions.inOutCubic)
 	table.insert(unlock_notification_timers, slide_in)
 	slide_in.updateCallback = function(timer)
 		if unlock_notification_sprite ~= nil then
@@ -297,9 +297,9 @@ create_unlock_notification = function(message)
 		end
 	end
 	slide_in.timerEndedCallback = function()
-		local hold = pd.timer.performAfterDelay(1000, function()
+		local hold = pd.timer.performAfterDelay(3000, function()
 			if unlock_notification_sprite == nil then return end
-			local slide_out = pd.timer.new(300, 120, -120)
+			local slide_out = pd.timer.new(300, 120, -120, pd.easingFunctions.inOutCubic)
 			table.insert(unlock_notification_timers, slide_out)
 			slide_out.updateCallback = function(timer)
 				if unlock_notification_sprite ~= nil then
@@ -335,22 +335,13 @@ function tournament_end(tournament_name, selected_character, unlock_notification
 		)
 		splash_screen_sprite:add()
 
-		local banner_image = gfx.image.new('assets/match_end/banner')
-		gfx.pushContext(banner_image)
-		gfx.setFont(large_font)
-		local text_width, text_height = gfx.getTextSize(math.floor(STATS['point_total']))
-		gfx.drawText(
-			math.floor(STATS['point_total']),
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			40 - math.floor( text_height / 2 )
-		)
-		banner_sprite = gfx.sprite.new(banner_image)
-		banner_sprite:moveTo(
+		local splash_screen_image = gfx.image.new('assets/backgrounds/blank_with_A')
+		splash_screen_sprite = gfx.sprite.new(splash_screen_image)
+		splash_screen_sprite:moveTo(
 			math.floor( pd.display.getWidth() / 2),
-			195
+			math.floor( pd.display.getHeight() / 2)
 		)
-		banner_sprite:add()
-		gfx.popContext()
+		splash_screen_sprite:add()
 
 		podium_sprite = gfx.sprite.new(gfx.image.new('assets/tournament_end/podium'))
 		podium_sprite:moveTo(
