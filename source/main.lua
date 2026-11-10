@@ -42,6 +42,7 @@ TOURNAMENT_MATCHES = {
 
 local music = pd.sound.fileplayer.new()
 local current_track = nil
+local music_scene = nil
 
 local progress = nil
 --[[{
@@ -524,6 +525,10 @@ function pd.update()
 		end
 
 	elseif scene == 'main_menu' then
+		if music_scene ~= scene then
+			change_music('assets/music/title', false)
+			music_scene = scene
+		end
 		scene = main_menu() -- from menu.lua
 
 	elseif scene == 'credits' then
@@ -581,6 +586,7 @@ function pd.update()
 		end
 
 	elseif string.find(scene, 'match') then
+		change_music('assets/music/theme', true)
 		new_tournament_unlocked = false
 		new_character_unlocked = false
 		scene = play_match(nil, nil, selected_character) -- from match.lua
@@ -588,6 +594,7 @@ function pd.update()
 	elseif string.find(scene, 'winner') then
 		winner = scene:gsub('winner_', '')
 		if winner == 'player' then
+			change_music('assets/music/win', false)
 			unlock_match_rewards()
 			scene = match_end(tournament_name, selected_character, 'WIN') -- from tournament.lua
 			if string.find(scene, 'tournament') then
@@ -600,6 +607,7 @@ function pd.update()
 				end
 			end
 		else
+			change_music('assets/music/lose', false)
 			scene = match_end(tournament_name, selected_character, 'LOSS') -- from tournament.lua
 			if scene == 'main_menu' then
 				-- the run is over
