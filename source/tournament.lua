@@ -406,25 +406,32 @@ function tournament_intro(tournament_name, opponent_num)
 		gfx.drawText(
 			'loading...',
 			30,
-			163
+			165
 		)
 
-		-- TODO: Different intro text for each tournament
+		local intro_messages = {
+			house =  {'the pets have',   'gathered for a',  'qualifying round'},
+			garden = {"there's stiffer", 'competition in',  'the garden'},
+			park =   {'this is it, the', 'best of the best','compete out here'}
+		}
+
 		gfx.drawText(
-			'the pets have',
+			intro_messages[location][1],
 			30,
 			30
 		)
 		gfx.drawText(
-			'gathered for a',
+			intro_messages[location][2],
 			30,
 			50
 		)
 		gfx.drawText(
-			'qualifying round',
+			intro_messages[location][3],
 			30,
 			70
 		)
+
+						gfx.popContext()
 
 		splash_screen_sprite = gfx.sprite.new(splash_screen_image)
 
