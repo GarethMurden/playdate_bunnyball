@@ -19,6 +19,7 @@ STATS = {
 	health = 0,
 	points = 0,
 	point_total = 0,
+	opponent_points = {},
 	hearts_lost = 0,
 	elapsed = 0
 }
@@ -42,6 +43,7 @@ TOURNAMENT_MATCHES = {
 
 local music = pd.sound.fileplayer.new()
 local current_track = nil
+local music_scene = nil
 
 local progress = nil
 --[[{
@@ -62,8 +64,8 @@ local progress = nil
 	},
 	run = {tournament = 'house', opponent = 2, character = 'bunny'}
 }--]]
+local new_unlock_notifications = {}
 local new_tournament_unlocked = false
-local new_character_unlocked = false
 
 local scene = nil
 local tournament_name = nil
@@ -74,6 +76,8 @@ local run_active = false
 
 local clear_save_pending = false
 local clear_save_prompt_ready = false
+local clear_save_option = 1
+local clear_save_options = {'confirm', 'cancel'}
 
 -- pause overlay
 local paused = false
@@ -93,6 +97,7 @@ menu:addMenuItem(
 		-- destructive: ask for a second press before wiping progress
 		clear_save_pending = true
 		clear_save_prompt_ready = false
+		clear_save_option = 1
 		-- the modal takes over; do not also show the pause overlay afterwards
 		paused = false
 	end
@@ -139,6 +144,31 @@ function load_progress()
 	return saved
 end
 
+local ALL_CHARACTERS = {'bunny', 'hamster', 'bird', 'rat', 'cat', 'ferret', 'snake', 'bugs', 'tortoise'}
+
+function unlock_character(name)
+	if in_table(name, progress['characters']) then return false end
+	table.insert(progress['characters'], name)
+	table.insert(new_unlock_notifications, name .. ' unlocked!')
+	play_sound('character_unlock')
+	save_progress()
+	if name ~= 'tortoise' then
+		local all_others_unlocked = true
+		for _, character in ipairs(ALL_CHARACTERS) do
+			if character ~= 'tortoise' and not in_table(character, progress['characters']) then all_others_unlocked = false; break end
+		end
+		if all_others_unlocked then unlock_character('tortoise') end
+	end
+	return true
+end
+
+function unlock_match_rewards()
+	if STATS['health_lost_this_match'] == 0 then unlock_character('bird') end
+	if STATS['points'] >= 90 and STATS['points'] < 100 then unlock_character('ferret') end
+	if STATS['player_rounds'] == 2 and STATS['opponent_rounds'] == 0 then unlock_character('cat') end
+	if STATS['throws'] > 0 and STATS['accuracy'] == 100 then unlock_character('bugs') end
+end
+
 function save_progress()
 	if progress == nil then
 		return
@@ -163,6 +193,7 @@ function save_run()
 		character = selected_character,
 		-- the run's score so far, so a resumed run keeps its totals
 		point_total = STATS['point_total'],
+		opponent_points = STATS['opponent_points'],
 		hearts_lost = STATS['hearts_lost'],
 		elapsed = STATS['elapsed']
 	}
@@ -179,25 +210,31 @@ function clear_run()
 end
 
 function draw_clear_save_prompt()
-	gfx.setColor(gfx.kColorBlack)
-	gfx.fillRect(40, 80, 320, 80)
 	gfx.setColor(gfx.kColorWhite)
+	gfx.fillRect(70, 60, 260, 90)
+	gfx.setColor(gfx.kColorBlack)
+	gfx.drawRect(70, 60, 260, 90)
 
-	local text = 'clear all progress?'
+	gfx.setFont(medium_font)
+	local text = 'CLEAR SAVE?'
 	local text_width, _ = gfx.getTextSize(text)
 	gfx.drawText(
 		text,
 		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-		95
+		72
 	)
 
-	text = 'A = clear    B = cancel'
-	text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-		125
-	)
+	gfx.setFont(small_font)
+	for i=1, #clear_save_options do
+		text = clear_save_options[i]
+		text_width, _ = gfx.getTextSize(text)
+		local x = math.floor( (pd.display.getWidth() / 2) - (text_width / 2) )
+		local y = 100 + ((i - 1) * 22)
+		if i == clear_save_option then
+			gfx.image.new('assets/arrow_right'):draw((x - (text_width / 2)) - 5, y - 8)
+		end
+		gfx.drawText(text, x, y)
+	end
 	gfx.setColor(gfx.kColorBlack)
 end
 
@@ -426,10 +463,26 @@ function pd.update()
 		if not clear_save_prompt_ready then
 			-- ignore the button press that chose the menu item
 			clear_save_prompt_ready = true
+		elseif pd.buttonJustPressed(pd.kButtonDown) then
+			clear_save_option += 1
+			if clear_save_option > #clear_save_options then
+				clear_save_option = 1
+			end
+			play_sound('menu_move')
+		elseif pd.buttonJustPressed(pd.kButtonUp) then
+			clear_save_option -= 1
+			if clear_save_option < 1 then
+				clear_save_option = #clear_save_options
+			end
+			play_sound('menu_move')
 		elseif pd.buttonJustPressed(pd.kButtonA) then
 			clear_save_pending = false
-			play_sound('menu_select')
-			clear_save()
+			if clear_save_options[clear_save_option] == 'confirm' then
+				play_sound('menu_select')
+				clear_save()
+			else
+				play_sound('menu_back')
+			end
 		elseif pd.buttonJustPressed(pd.kButtonB) then
 			clear_save_pending = false
 			play_sound('menu_back')
@@ -492,6 +545,7 @@ function pd.update()
 			opponent_no = run['opponent']
 			selected_character = run['character']
 			STATS['point_total'] = run['point_total'] or 0
+			STATS['opponent_points'] = run['opponent_points'] or {}
 			STATS['hearts_lost'] = run['hearts_lost'] or 0
 			STATS['elapsed'] = run['elapsed'] or 0
 			run_active = true
@@ -499,6 +553,10 @@ function pd.update()
 		end
 
 	elseif scene == 'main_menu' then
+		if music_scene ~= scene then
+			change_music('assets/music/title', false)
+			music_scene = scene
+		end
 		scene = main_menu() -- from menu.lua
 
 	elseif scene == 'credits' then
@@ -518,6 +576,7 @@ function pd.update()
 			-- a tournament run starts here, so reset its per-run state
 			opponent_no = 1
 			STATS['point_total'] = 0
+			STATS['opponent_points'] = {}
 			STATS['hearts_lost'] = 0
 			STATS['elapsed'] = 0
 			run_active = true
@@ -525,13 +584,15 @@ function pd.update()
 		end
 
 	elseif string.find(scene, 'finished') then
-		if progress['tournament'] == 1 and new_tournament_unlocked ~= true then
+		if progress['tournament'] == 1 and not new_tournament_unlocked then
 			progress['tournament'] = 2
 			new_tournament_unlocked = true
+			table.insert(new_unlock_notifications, 'Garden unlocked!')
 			save_progress()
-		elseif progress['tournament'] == 2 and new_tournament_unlocked ~= true then
+		elseif progress['tournament'] == 2 and not new_tournament_unlocked then
 			progress['tournament'] = 3
 			new_tournament_unlocked = true
+			table.insert(new_unlock_notifications, 'Park unlocked!')
 			save_progress()
 		end
 		-- beating a tournament unlocks that tournament's first opponent
@@ -539,14 +600,15 @@ function pd.update()
 		local unlock = TOURNAMENT_MATCHES[location][1]
 		if not in_table(unlock, progress['characters']) then
 			table.insert(progress['characters'], unlock)
-			new_character_unlocked = true
+			table.insert(new_unlock_notifications, unlock .. ' unlocked!')
 			play_sound('character_unlock')
 			save_progress()
 		end
-		scene = tournament_end(tournament_name, selected_character, new_tournament_unlocked, new_character_unlocked)
+		scene = tournament_end(tournament_name, selected_character, new_unlock_notifications)
 		if scene == 'main_menu' then
 			save_score()
 			clear_run()
+			new_unlock_notifications = {}
 		end
 
 	elseif string.find(scene, 'tournament') then
@@ -556,13 +618,16 @@ function pd.update()
 		end
 
 	elseif string.find(scene, 'match') then
+		change_music('assets/music/theme', true)
 		new_tournament_unlocked = false
-		new_character_unlocked = false
 		scene = play_match(nil, nil, selected_character) -- from match.lua
 
 	elseif string.find(scene, 'winner') then
 		winner = scene:gsub('winner_', '')
+		STATS['opponent_points'][opponent_no] = STATS['points']
 		if winner == 'player' then
+			change_music('assets/music/win', false)
+			unlock_match_rewards()
 			scene = match_end(tournament_name, selected_character, 'WIN') -- from tournament.lua
 			if string.find(scene, 'tournament') then
 				clear_tournament_sprites() -- from tournament.lua
@@ -574,6 +639,7 @@ function pd.update()
 				end
 			end
 		else
+			change_music('assets/music/lose', false)
 			scene = match_end(tournament_name, selected_character, 'LOSS') -- from tournament.lua
 			if scene == 'main_menu' then
 				-- the run is over
