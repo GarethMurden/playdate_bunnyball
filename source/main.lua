@@ -12,6 +12,7 @@ local gfx <const> = pd.graphics
 
 local medium_font = gfx.font.new('assets/fonts/medium')
 local small_font = gfx.font.new('assets/fonts/small')
+local tiny_font = gfx.font.new('assets/fonts/tiny')
 
 STATS = {
 	throws = 0,
