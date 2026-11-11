@@ -232,7 +232,7 @@ local function create_opponent_score_notification(location)
 		local animal = opponents[i]
 		local row = i
 		local y = 45 + (row - 1) * 50
-		gfx.image.new('assets/animals/' .. animal .. '_icon'):draw(176, y - 15)
+		gfx.image.new('assets/animals/' .. animal .. '_icon'):draw(221, y - 15)
 		local score = math.floor((STATS['opponent_points'] or {})[row] or 0)
 		local text = tostring(score)
 		local width, height = gfx.getTextSize(text)
