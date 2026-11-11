@@ -76,6 +76,8 @@ local run_active = false
 
 local clear_save_pending = false
 local clear_save_prompt_ready = false
+local clear_save_option = 1
+local clear_save_options = {'confirm', 'cancel'}
 
 -- pause overlay
 local paused = false
@@ -95,6 +97,7 @@ menu:addMenuItem(
 		-- destructive: ask for a second press before wiping progress
 		clear_save_pending = true
 		clear_save_prompt_ready = false
+		clear_save_option = 1
 		-- the modal takes over; do not also show the pause overlay afterwards
 		paused = false
 	end
@@ -208,24 +211,30 @@ end
 
 function draw_clear_save_prompt()
 	gfx.setColor(gfx.kColorWhite)
-	gfx.fillRect(40, 80, 320, 80)
+	gfx.fillRect(70, 60, 260, 90)
 	gfx.setColor(gfx.kColorBlack)
+	gfx.drawRect(70, 60, 260, 90)
 
-	local text = 'clear all progress?'
+	gfx.setFont(medium_font)
+	local text = 'CLEAR SAVE?'
 	local text_width, _ = gfx.getTextSize(text)
 	gfx.drawText(
 		text,
 		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-		95
+		72
 	)
 
-	text = 'A = clear    B = cancel'
-	text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-		125
-	)
+	gfx.setFont(small_font)
+	for i=1, #clear_save_options do
+		text = clear_save_options[i]
+		text_width, _ = gfx.getTextSize(text)
+		local x = math.floor( (pd.display.getWidth() / 2) - (text_width / 2) )
+		local y = 100 + ((i - 1) * 22)
+		if i == clear_save_option then
+			gfx.image.new('assets/arrow_right'):draw((x - (text_width / 2)) - 5, y - 8)
+		end
+		gfx.drawText(text, x, y)
+	end
 	gfx.setColor(gfx.kColorBlack)
 end
 
@@ -454,10 +463,26 @@ function pd.update()
 		if not clear_save_prompt_ready then
 			-- ignore the button press that chose the menu item
 			clear_save_prompt_ready = true
+		elseif pd.buttonJustPressed(pd.kButtonDown) then
+			clear_save_option += 1
+			if clear_save_option > #clear_save_options then
+				clear_save_option = 1
+			end
+			play_sound('menu_move')
+		elseif pd.buttonJustPressed(pd.kButtonUp) then
+			clear_save_option -= 1
+			if clear_save_option < 1 then
+				clear_save_option = #clear_save_options
+			end
+			play_sound('menu_move')
 		elseif pd.buttonJustPressed(pd.kButtonA) then
 			clear_save_pending = false
-			play_sound('menu_select')
-			clear_save()
+			if clear_save_options[clear_save_option] == 'confirm' then
+				play_sound('menu_select')
+				clear_save()
+			else
+				play_sound('menu_back')
+			end
 		elseif pd.buttonJustPressed(pd.kButtonB) then
 			clear_save_pending = false
 			play_sound('menu_back')
