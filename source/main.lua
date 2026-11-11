@@ -86,7 +86,6 @@ local pause_option = 1
 local pause_options = {'resume', 'forfeit'}
 
 -- scores screen
-local scores_background = nil
 local scores_offset = 0
 local SCORES_ROWS = 6
 
@@ -331,80 +330,53 @@ function sorted_scores()
 end
 
 function scores()
-	-- TODO: the scores screen art is not available yet. ガレス will supply a
-	-- background image; drop it in as assets/backgrounds/scores.png and swap
-	-- the line below to load it. Until then the plain blank background is used
-	-- and the text is drawn straight onto the cleared screen.
-	if scores_background == nil then
-		scores_background = gfx.image.new('assets/backgrounds/blank')
-	end
+	local scores_background = gfx.image.new('assets/backgrounds/high_scores')
 	scores_background:draw(0, 0)
 
-	local list = sorted_scores()
-
-	gfx.setFont(medium_font)
-	local text = 'SCORES'
-	local text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-		12
-	)
-
-	gfx.setFont(small_font)
-	if #list == 0 then
-		text = 'no scores recorded yet'
-		text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			100
-		)
-	else
-		-- column headings
-		gfx.drawText('tournament', 20, 40)
-		gfx.drawText('animal', 120, 40)
-		gfx.drawText('pts', 220, 40)
-		gfx.drawText('time', 270, 40)
-		gfx.drawText('hearts', 330, 40)
-
-		if pd.buttonJustPressed(pd.kButtonDown) then
-			scores_offset += 1
-			if scores_offset > #list - SCORES_ROWS then
-				scores_offset = math.max(#list - SCORES_ROWS, 0)
-			end
-			play_sound('menu_move')
-		elseif pd.buttonJustPressed(pd.kButtonUp) then
-			scores_offset -= 1
-			if scores_offset < 0 then
-				scores_offset = 0
-			end
-			play_sound('menu_move')
-		end
-
-		for i=1, SCORES_ROWS do
-			local record = list[scores_offset + i]
-			if record ~= nil then
-				local y = 40 + (i * 22)
-				gfx.drawText(record['tournament'], 20, y)
-				gfx.drawText(record['character'], 120, y)
-				gfx.drawText(tostring(record['points']), 220, y)
-				gfx.drawText(format_time(record['time']), 270, y)
-				gfx.drawText(tostring(record['hearts_lost']), 330, y)
-			end
+	-- Saved entries are the best completed run for each tournament/character.
+	-- Show the highest saved tournament total across characters.
+	local tournament_scores = {house = 0, garden = 0, park = 0}
+	for _, record in pairs(progress['scores']) do
+		if type(record) == 'table'
+			and type(record['points']) == 'number'
+			and tournament_scores[record['tournament']] ~= nil
+			and record['points'] > tournament_scores[record['tournament']]
+		then
+			tournament_scores[record['tournament']] = math.floor(record['points'])
 		end
 	end
 
-	text = 'A or B = back'
-	text_width, _ = gfx.getTextSize(text)
+	local centers = {80, 200, 320}
+	local locations = {
+		{name = 'HOUSE', key = 'house'},
+		{name = 'GARDEN', key = 'garden'},
+		{name = 'PARK', key = 'park'}
+	}
+	for i, location in ipairs(locations) do
+		local label = location['name']
+		gfx.setFont(tiny_font)
+		local label_width, _ = gfx.getTextSize(label)
+		gfx.drawText(label, centers[i] - math.floor(label_width / 2), 101)
+
+		local points = tostring(tournament_scores[location['key']])
+		gfx.setFont(medium_font)
+		local points_width, _ = gfx.getTextSize(points)
+		gfx.drawText(points, centers[i] - math.floor(points_width / 2), 114)
+	end
+
+	local total = tournament_scores['house']
+		+ tournament_scores['garden']
+		+ tournament_scores['park']
+	local total_text = 'TOTAL  ' .. tostring(total)
+	gfx.setFont(medium_font)
+	local total_width, _ = gfx.getTextSize(total_text)
 	gfx.drawText(
-		text,
-		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-		220
+		total_text,
+		math.floor((pd.display.getWidth() - total_width) / 2),
+		151
 	)
 
 	if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
-		scores_offset = 0
 		play_sound('menu_back')
 		return 'main_menu'
 	end
