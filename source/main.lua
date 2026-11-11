@@ -77,7 +77,7 @@ local run_active = false
 local clear_save_pending = false
 local clear_save_prompt_ready = false
 local clear_save_option = 1
-local clear_save_options = {'clear all progress', 'cancel'}
+local clear_save_options = {'confirm', 'cancel'}
 
 -- pause overlay
 local paused = false
@@ -231,7 +231,7 @@ function draw_clear_save_prompt()
 		local x = math.floor( (pd.display.getWidth() / 2) - (text_width / 2) )
 		local y = 100 + ((i - 1) * 22)
 		if i == clear_save_option then
-			gfx.image.new('assets/arrow_right'):draw(x - (math.floor(text_width / 2) + 5), y - 8)
+			gfx.image.new('assets/arrow_right'):draw((x - (text_width / 2)) - 5, y - 8)
 		end
 		gfx.drawText(text, x, y)
 	end
@@ -477,7 +477,7 @@ function pd.update()
 			play_sound('menu_move')
 		elseif pd.buttonJustPressed(pd.kButtonA) then
 			clear_save_pending = false
-			if clear_save_options[clear_save_option] == 'clear all progress' then
+			if clear_save_options[clear_save_option] == 'confirm' then
 				play_sound('menu_select')
 				clear_save()
 			else
