@@ -642,7 +642,9 @@ function pd.update()
 			change_music('assets/music/lose', false)
 			scene = match_end(tournament_name, selected_character, 'LOSS') -- from tournament.lua
 			if scene == 'main_menu' then
-				-- the run is over
+				-- the run is over; tear down match and tournament UI/state as on forfeit
+				abandon_match() -- from match.lua
+				clear_tournament_sprites() -- from tournament.lua
 				clear_run()
 			end
 		end
