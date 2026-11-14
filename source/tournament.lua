@@ -431,7 +431,7 @@ function tournament_intro(tournament_name, opponent_num)
 			70
 		)
 
-						gfx.popContext()
+		gfx.popContext()
 
 		splash_screen_sprite = gfx.sprite.new(splash_screen_image)
 

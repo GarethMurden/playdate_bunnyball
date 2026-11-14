@@ -123,6 +123,108 @@ function credits()
 	end
 end
 
+function scores(saved_scores)
+	if background_sprite == nil then
+		local background_image = gfx.image.new('assets/backgrounds/high_scores')
+		gfx.pushContext(background_image)
+
+		local tournament_scores = {house = 0, garden = 0, park = 0}
+		for _, record in pairs(saved_scores or {}) do
+			if type(record) == 'table'
+				and type(record['points']) == 'number'
+				and tournament_scores[record['tournament']] ~= nil
+				and record['points'] > tournament_scores[record['tournament']]
+			then
+				tournament_scores[record['tournament']] = math.floor(record['points'])
+			end
+		end
+
+		gfx.setFont(medium_font)
+		local text = tournament_scores['house']
+		local text_width, _ = gfx.getTextSize(text)
+		gfx.drawText(
+			text,
+			55,
+			155
+		)
+
+		local text = tournament_scores['garden']
+		local text_width, _ = gfx.getTextSize(text)
+		gfx.drawText(
+			text,
+			185,
+			155
+		)
+
+		local text = tournament_scores['park']
+		local text_width, _ = gfx.getTextSize(text)
+		gfx.drawText(
+			text,
+			300,
+			155
+		)
+
+		gfx.popContext()
+
+		background_sprite = gfx.sprite.new(background_image)
+		background_sprite:moveTo(
+			math.floor( pd.display.getWidth() / 2),
+			math.floor( pd.display.getHeight() / 2)
+		)
+	end
+
+	background_sprite:add()
+
+	if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
+		play_sound('menu_back')
+		background_sprite:remove()
+		background_sprite = nil
+		return 'main_menu' -- next scene
+	else
+		return 'scores' -- next scene
+	end
+end
+
+function scores_broken(saved_scores)
+	print('scores_broken()')
+	gfx.setColor(gfx.kColorBlack)
+	local tournament_scores = {house = 0, garden = 0, park = 0}
+	for _, record in pairs(saved_scores or {}) do
+		if type(record) == 'table'
+			and type(record['points']) == 'number'
+			and tournament_scores[record['tournament']] ~= nil
+			and record['points'] > tournament_scores[record['tournament']]
+		then
+			tournament_scores[record['tournament']] = math.floor(record['points'])
+		end
+	end
+
+	gfx.setFont(medium_font)
+	local title = 'SCORES'
+	local title_width, _ = gfx.getTextSize(title)
+	gfx.drawText(title, math.floor((pd.display.getWidth() - title_width) / 2), 25)
+
+	gfx.setFont(small_font)
+	local locations = {'HOUSE', 'GARDEN', 'PARK'}
+	local keys = {'house', 'garden', 'park'}
+	local centers = {80, 200, 320}
+	for i = 1, #locations do
+		local label_width, _ = gfx.getTextSize(locations[i])
+		gfx.drawText(locations[i], centers[i] - math.floor(label_width / 2), 85)
+		gfx.setFont(medium_font)
+		local points = tostring(tournament_scores[keys[i]])
+		local points_width, _ = gfx.getTextSize(points)
+		gfx.drawText(points, centers[i] - math.floor(points_width / 2), 110)
+		gfx.setFont(small_font)
+	end
+
+	if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
+		play_sound('menu_back')
+		return 'main_menu'
+	end
+	return 'scores'
+end
+
 function in_table(needle, haystack)
 	for index, value in ipairs(haystack) do
 		if value == needle then
