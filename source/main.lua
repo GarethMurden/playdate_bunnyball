@@ -12,6 +12,7 @@ local gfx <const> = pd.graphics
 
 local medium_font = gfx.font.new('assets/fonts/medium')
 local small_font = gfx.font.new('assets/fonts/small')
+local tiny_font = gfx.font.new('assets/fonts/tiny')
 
 STATS = {
 	throws = 0,
@@ -84,11 +85,6 @@ local paused = false
 local pause_ready = false
 local pause_option = 1
 local pause_options = {'resume', 'forfeit'}
-
--- scores screen
-local scores_background = nil
-local scores_offset = 0
-local SCORES_ROWS = 6
 
 local menu = pd.getSystemMenu()
 menu:addMenuItem(
@@ -330,87 +326,6 @@ function sorted_scores()
 	return list
 end
 
-function scores()
-	-- TODO: the scores screen art is not available yet. ガレス will supply a
-	-- background image; drop it in as assets/backgrounds/scores.png and swap
-	-- the line below to load it. Until then the plain blank background is used
-	-- and the text is drawn straight onto the cleared screen.
-	if scores_background == nil then
-		scores_background = gfx.image.new('assets/backgrounds/blank')
-	end
-	scores_background:draw(0, 0)
-
-	local list = sorted_scores()
-
-	gfx.setFont(medium_font)
-	local text = 'SCORES'
-	local text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-		12
-	)
-
-	gfx.setFont(small_font)
-	if #list == 0 then
-		text = 'no scores recorded yet'
-		text_width, _ = gfx.getTextSize(text)
-		gfx.drawText(
-			text,
-			math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-			100
-		)
-	else
-		-- column headings
-		gfx.drawText('tournament', 20, 40)
-		gfx.drawText('animal', 120, 40)
-		gfx.drawText('pts', 220, 40)
-		gfx.drawText('time', 270, 40)
-		gfx.drawText('hearts', 330, 40)
-
-		if pd.buttonJustPressed(pd.kButtonDown) then
-			scores_offset += 1
-			if scores_offset > #list - SCORES_ROWS then
-				scores_offset = math.max(#list - SCORES_ROWS, 0)
-			end
-			play_sound('menu_move')
-		elseif pd.buttonJustPressed(pd.kButtonUp) then
-			scores_offset -= 1
-			if scores_offset < 0 then
-				scores_offset = 0
-			end
-			play_sound('menu_move')
-		end
-
-		for i=1, SCORES_ROWS do
-			local record = list[scores_offset + i]
-			if record ~= nil then
-				local y = 40 + (i * 22)
-				gfx.drawText(record['tournament'], 20, y)
-				gfx.drawText(record['character'], 120, y)
-				gfx.drawText(tostring(record['points']), 220, y)
-				gfx.drawText(format_time(record['time']), 270, y)
-				gfx.drawText(tostring(record['hearts_lost']), 330, y)
-			end
-		end
-	end
-
-	text = 'A or B = back'
-	text_width, _ = gfx.getTextSize(text)
-	gfx.drawText(
-		text,
-		math.floor( (pd.display.getWidth() / 2) - (text_width / 2) ),
-		220
-	)
-
-	if pd.buttonJustPressed(pd.kButtonA) or pd.buttonJustPressed(pd.kButtonB) then
-		scores_offset = 0
-		play_sound('menu_back')
-		return 'main_menu'
-	end
-	return 'scores'
-end
-
 function start_match(tourament_name, opponent_num)
 	clear_tournament_sprites() -- from tournament.lua
 	set_tournament_timer = false
@@ -559,6 +474,9 @@ function pd.update()
 		end
 		scene = main_menu() -- from menu.lua
 
+	elseif scene == 'scores' then
+		scene = scores(progress['scores']) -- from menu.lua
+
 	elseif scene == 'credits' then
 		scene = credits() -- from menu.lua
 
@@ -646,9 +564,6 @@ function pd.update()
 				clear_run()
 			end
 		end
-
-	elseif scene == 'scores' then
-		scene = scores()
 
 	end
 
